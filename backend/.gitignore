@@ -29,10 +29,10 @@ MANIFEST
 # Project-specific storage
 chroma_db/
 qdrant_storage/
-markdowns/
+
 
 # Data and Evaluation
-public/*.pdf
+
 vidore_data/
 vidore_results.json
 search_inspection.md
