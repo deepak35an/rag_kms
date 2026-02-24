@@ -1,0 +1,5 @@
+langchain-openai
+langchain-core
+# langchain-groq # Optional
+# langchain-mistralai # Optional
+# langchain-huggingface # Keeping for LLM interface if needed, but embeddings will be native

@@ -1,0 +1,17 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+pydantic
+chromadb>=0.4.0
+sentence-transformers
+torch --index-url https://download.pytorch.org/whl/cpu
+numpy
+scikit-learn
+pdfplumber
+pdf2image
+pytesseract
+tabulate
+rank_bm25
+psutil
+pymupdf4llm
+rapidocr_onnxruntime
