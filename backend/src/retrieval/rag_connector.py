@@ -44,13 +44,13 @@ class RAGConnector:
         if OLLAMA_AVAILABLE:
             try:
                 llm = ChatOllama(
-                    model="llama3.2:3b-instruct-q4_K_M",
+                    model="gemma3:4b",
                     temperature=0.1,
                     num_predict=1024,
                 )
                 # Ping Ollama to confirm it's running
                 llm.invoke("ping")
-                logger.info("Using local Ollama LLM: llama3.2:3b-instruct-q4_K_M")
+                logger.info("Using local Ollama LLM: gemma3:4b")
                 return llm
             except Exception as e:
                 logger.error(f"FATAL: Local Ollama LLM failed to initialize or is not reachable: {e}")
@@ -204,14 +204,13 @@ class RAGConnector:
                 "retrieved_chunks": []
             }
 
-        # Step 2: Format context — numbered chunks so LLM can reference them
+        # Step 2: Format context — heavily labeled for citation
         context_parts = []
         for i, d in enumerate(docs, 1):
             source = d.metadata.get('source', '?')
             page = d.metadata.get('page', '?')
-            score = d.metadata.get('relevance_score', 0.0)
             context_parts.append(
-                f"[Chunk {i} | Source: {source} | Page: {page} | Score: {score:.2f}]\n{d.page_content.strip()}"
+                f"--- [START CHUNK {i}] ---\nSOURCE: {source}\nPAGE: {page}\nCONTENT:\n{d.page_content.strip()}\n--- [END CHUNK {i}] ---"
             )
         context = "\n\n".join(context_parts)
 
@@ -338,25 +337,26 @@ class RAGConnector:
     def _get_system_prompt(self) -> str:
         """Get the system prompt that produces detailed, well-structured RAG answers."""
         return """
-You are a knowledgeable and helpful assistant.
-Your job is to answer questions using ONLY the CONTEXT sections provided below.
+You are a professional assistant expert in synthesizing complex information from retrieved documents.
+Your goal is to provide precise, well-structured answers based ONLY on the provided context.
 
-=== OUTPUT RULES ===
-1. Use ONLY information from the CONTEXT. Do not guess or hallucinate.
-2. Write a clear 1-2 sentence introduction that directly answers the question.
-3. If the answer is a process or sequence of steps:
-   - Use a numbered list (1. 2. 3. ...).
-   - For EACH step, write the step name/title in bold, followed by a short explanation (1-2 sentences).
-   - Follow the logical or chronological order from the context.
-4. If the answer is a collection of facts or options, use bullet points with a brief explanation for each.
-5. Aim for a thorough answer — do not stop after one line. Explain the 'what' and 'how' for each point.
-6. Do NOT use LaTeX, math boxes, or markdown tables unless the data clearly requires a table.
-7. End with a brief closing sentence summarising or guiding the user.
-8. If the context does not contain the answer, say: "I'm sorry, I don't have enough information to answer that. Please consult the official source."
+=== CORE COMMANDMENTS ===
+1. STRICT CONTEXT ADHERENCE: Answer using only the provided CONTEXT. Do not use outside knowledge.
+2. CITATIONS: You MUST cite the source chunk for every significant fact or claim. Use the format "[Chunk X]" (e.g., "According to the guidelines [Chunk 1]...").
+3. UNCERTAINTY: If the answer is not in the context, say: "I'm sorry, but I don't have enough information in the provided documents to answer that."
 
-=== CONTEXT ===
+=== STRUCTURE & STYLE ===
+1. SUMMARY: Start with a 1-sentence direct answer.
+2. FORMATTING:
+   - Use **bold titles** for distinct sections.
+   - Use bullet points or numbered lists for readability.
+   - Use bold text to highlight key terms or dates.
+3. DEPTH: Elaborate on points found in the context. Do not give one-word answers.
+4. TONE: Professional and objective.
+
+=== CONTEXT SECTIONS ===
 {context}
-==================
+========================
 """
 
     def get_chain(self, query: Optional[str]):
