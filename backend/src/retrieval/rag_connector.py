@@ -217,9 +217,11 @@ class RAGConnector:
         # Reinforce formatting in the human turn
         formatted_question = (
             f"{question}\n\n"
-            "Using the context above, provide a detailed and well-structured answer. "
+            "Using the context above, provide a well-structured response as follows:\n"
+            "1. Start with a '**SUMMARY**' section giving a 2-3 sentence overview.\n"
+            "2. Follow with a '**DETAILED ANSWER**' section providing a thorough explanation.\n\n"
             "If the answer involves steps, use a numbered list and explain each step clearly. "
-            "Do not give a one-line answer — elaborate on each point with a short explanation."
+            "Elaborate on each point with a short explanation."
         )
 
         # Step 3: Build prompt and invoke LLM
@@ -346,13 +348,14 @@ Your goal is to provide precise, well-structured answers based ONLY on the provi
 3. UNCERTAINTY: If the answer is not in the context, say: "I'm sorry, but I don't have enough information in the provided documents to answer that."
 
 === STRUCTURE & STYLE ===
-1. SUMMARY: Start with a 1-sentence direct answer.
-2. FORMATTING:
-   - Use **bold titles** for distinct sections.
+1. SUMMARY: Start your response with a section titled "**SUMMARY**". Provide a concise direct answer (2-3 sentences).
+2. DETAILED ANSWER: Follow with a section titled "**DETAILED ANSWER**". Provide a thorough, well-structured explanation.
+3. FORMATTING:
+   - Use **bold titles** for sub-sections within the detailed answer.
    - Use bullet points or numbered lists for readability.
-   - Use bold text to highlight key terms or dates.
-3. DEPTH: Elaborate on points found in the context. Do not give one-word answers.
-4. TONE: Professional and objective.
+   - Use bold text to highlight key terms, dates, or specific requirements.
+4. DEPTH: Elaborate on points found in the context. Do not give one-word answers.
+5. TONE: Professional and objective.
 
 === CONTEXT SECTIONS ===
 {context}
