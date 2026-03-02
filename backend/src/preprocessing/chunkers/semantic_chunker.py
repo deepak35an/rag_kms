@@ -126,21 +126,6 @@ class SemanticChunker(BaseChunker):
             np.linalg.norm(embedding1) * np.linalg.norm(embedding2)
         )
     
-    def _average_embeddings(self, embeddings, weights=None):
-        """Calculate weighted average of embeddings."""
-        if weights is None:
-            weights = [1] * len(embeddings)
-        
-        # Convert to numpy arrays
-        embeddings = [np.array(emb) for emb in embeddings]
-        weights = np.array(weights) / sum(weights)  # Normalize weights
-        
-        # Calculate weighted average
-        avg_embedding = sum(w * emb for w, emb in zip(weights, embeddings))
-        
-        # Normalize to unit length
-        return avg_embedding / np.linalg.norm(avg_embedding)
-    
     def split_text(self, text: str, metadata: Optional[Dict[str, Any]] = None) -> List[Document]:
         """Split a text string into semantically coherent chunks.
         

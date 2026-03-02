@@ -3,7 +3,7 @@ import os
 import re
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from .chunking_strategies import get_chunker, get_chunker_for_document_type
+from .chunking_strategies import get_chunker
 
 logger = logging.getLogger(__name__)
 
@@ -23,10 +23,11 @@ class DocumentProcessor:
         )
         
         self.chunker = get_chunker(
-            'hybrid' if embedding_function else 'recursive',
-            embedding_function=embedding_function,
+            'hierarchical',
             chunk_size=self.chunk_size,
-            chunk_overlap=self.chunk_overlap
+            chunk_overlap=self.chunk_overlap,
+            parent_size=1500,
+            parent_overlap=200,
         )
 
     def preprocess_text(self, text):
@@ -50,20 +51,12 @@ class DocumentProcessor:
         return "\n".join(cleaned).strip()
 
     def split_text_context_aware(self, text, metadata):
-        """Hybrid splitting with context awareness, preserving table integrity."""
-        doc_type = metadata.get("type", "text")
-        chunker = get_chunker_for_document_type(
-            doc_type=doc_type,
-            embedding_function=self.embedding_function,
-            chunk_size=self.chunk_size,
-            chunk_overlap=self.chunk_overlap
-        )
-        
+        """Split text using the hierarchical chunker, preserving table integrity."""
         temp_doc = Document(page_content=text, metadata=metadata)
-        documents = chunker.split_documents([temp_doc])
+        documents = self.chunker.split_documents([temp_doc])
         
         if not documents:
-            logger.warning(f"No chunks created for document of type {doc_type}, using recursive splitting")
+            logger.warning(f"No chunks created for document (type={metadata.get('type', 'text')}), using recursive splitting as fallback")
             recursive_chunks = self.recursive_splitter.split_text(text)
             documents = [Document(page_content=chunk.strip(), metadata=metadata) 
                         for chunk in recursive_chunks if chunk.strip()]
