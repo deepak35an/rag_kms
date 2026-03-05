@@ -20,14 +20,14 @@ export default function Hero() {
         <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight tracking-tight max-w-4xl mx-auto">
           Get Instant Answers from{" "}
           <span className="text-transparent bg-clip-text bg-linear-to-r from-blue-600 to-indigo-600">
-            Government Documents
+            Any Document
           </span>
         </h1>
 
         {/* Subtitle */}
         <p className="mt-6 text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
-          RAG4GOV uses advanced Retrieval-Augmented Generation to search, retrieve, and 
-          answer questions from official documents — accurately and instantly.
+          ContextIQ uses advanced Retrieval-Augmented Generation to search, retrieve, and
+          answer questions from your documents — accurately and instantly.
         </p>
 
         {/* CTA Buttons */}

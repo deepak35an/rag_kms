@@ -9,14 +9,14 @@ export default function Footer() {
           <div>
             <div className="flex items-center gap-2 mb-4">
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">R</span>
+                <span className="text-white font-bold text-sm">C</span>
               </div>
               <span className="text-xl font-bold text-white">
-                RAG<span className="text-blue-400">4</span>GOV
+                Context<span className="text-blue-400">IQ</span>
               </span>
             </div>
             <p className="text-sm leading-relaxed">
-              AI-powered document intelligence for government and public sector knowledge bases.
+              AI-powered document intelligence — ask questions, get cited answers from any knowledge base.
             </p>
           </div>
 
@@ -67,10 +67,10 @@ export default function Footer() {
         {/* Bottom bar */}
         <div className="border-t border-gray-800 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-sm">
-            &copy; {new Date().getFullYear()} RAG4GOV. All rights reserved.
+            &copy; {new Date().getFullYear()} ContextIQ. All rights reserved.
           </p>
           <p className="text-sm">
-            Built for government document intelligence.
+            Built for intelligent document search & answers.
           </p>
         </div>
       </div>

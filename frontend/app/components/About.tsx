@@ -9,11 +9,11 @@ export default function About() {
               About
             </p>
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 leading-tight">
-              Built for Government Document Intelligence
+              Built for Intelligent Document Q&A
             </h2>
             <p className="mt-5 text-lg text-gray-600 leading-relaxed">
-              RAG4GOV is an AI system designed to make dense government documents — 
-              brochures, admissions guides, policy files — instantly searchable and 
+              ContextIQ is an AI system designed to make dense documents —
+              brochures, guides, manuals, reports — instantly searchable and
               understandable through natural conversation.
             </p>
             <p className="mt-4 text-gray-600 leading-relaxed">
