@@ -30,7 +30,7 @@ export default function About() {
                 "Fully local — your documents never leave your server",
               ].map((point, i) => (
                 <li key={i} className="flex items-start gap-3">
-                  <span className="mt-1 flex-shrink-0 w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center">
+                  <span className="mt-1 shrink-0 w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center">
                     <svg className="w-3 h-3 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
                       <path d="M16.707 5.293a1 1 0 00-1.414 0L8 12.586l-3.293-3.293a1 1 0 00-1.414 1.414l4 4a1 1 0 001.414 0l8-8a1 1 0 000-1.414z" />
                     </svg>
@@ -46,7 +46,7 @@ export default function About() {
             <div className="bg-gray-50 border border-gray-200 rounded-2xl p-8 space-y-4">
               {/* Mock chat bubble */}
               <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0 text-xs font-bold text-gray-500">
+                <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center shrink-0 text-xs font-bold text-gray-500">
                   U
                 </div>
                 <div className="bg-white border border-gray-200 rounded-2xl rounded-tl-none px-4 py-3 text-sm text-gray-700 shadow-sm">
@@ -55,17 +55,17 @@ export default function About() {
               </div>
 
               <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0 text-xs font-bold text-white">
+                <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center shrink-0 text-xs font-bold text-white">
                   AI
                 </div>
                 <div className="bg-blue-50 border border-blue-100 rounded-2xl rounded-tl-none px-4 py-3 text-sm text-gray-700 shadow-sm">
                   JAC Chandigarh 2025 includes <span className="font-semibold text-blue-700">PEC, UIET, CCET</span> and several other institutes across Chandigarh and Punjab...
                   <div className="mt-3 flex flex-wrap gap-2">
                     <span className="text-xs bg-white border border-blue-200 text-blue-600 rounded-full px-3 py-1 font-medium">
-                      📄 jac_brochure_2025 (p.3)
+                      jac_brochure_2025 (p.3)
                     </span>
                     <span className="text-xs bg-white border border-blue-200 text-blue-600 rounded-full px-3 py-1 font-medium">
-                      📄 jac_brochure_2025 (p.7)
+                      jac_brochure_2025 (p.7)
                     </span>
                   </div>
                 </div>
