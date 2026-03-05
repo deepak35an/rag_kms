@@ -1,46 +1,37 @@
 # RAG4GOV Consolidated Dependencies
-# Pinned to versions currently validated in the environment
+# Updated for Python 3.11+
 
 # --- API & Server ---
-uvicorn==0.35.0
-pydantic==2.12.5
+uvicorn==0.27.0
+pydantic==2.6.0
 python-dotenv==1.0.1
-python-multipart==0.0.20
+python-multipart==0.0.6
 
 # --- Core RAG & LLM ---
-langchain==1.2.3
-langchain-core==1.2.6
-langchain-community==0.4.1
-langchain-openai==1.1.7
-langchain-ollama==1.0.1
-langchain-text-splitters==1.1.0
+langchain>=0.2.5
+langchain-openai>=0.1.0
+langchain-ollama>=0.1.0
 sentence-transformers==2.5.1
 rank-bm25==0.2.2
 qdrant-client==1.16.2
 
-
 # --- Data Processing & Extraction ---
-pdfplumber==0.11.9
+pdfplumber==0.10.4
 pdf2image==1.17.0
 pytesseract==0.3.13
 pymupdf4llm==0.2.9
-rapidocr-onnxruntime==1.4.4
+rapidocr-onnxruntime==1.2.3
 tabulate==0.9.0
-Pillow==9.5.0
+Pillow==10.1.0
 
 # --- ML / Computation ---
 # Install torch via: pip install torch==2.2.1 --index-url https://download.pytorch.org/whl/cpu
 torch==2.2.1
 numpy==1.26.4
-scikit-learn==1.6.1
-scipy==1.15.3
+scikit-learn==1.5.2
+scipy==1.12.0
 
 # --- Utility ---
 psutil==7.0.0
 tqdm==4.66.4
-requests==2.32.5
-
-# --- Development & Testing (Optional) ---
-# pytest==7.0.0
-# pytest-cov==4.0.0
-# mock==5.0.0
+requests==2.31.0

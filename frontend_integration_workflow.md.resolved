@@ -1,0 +1,82 @@
+# Frontend Integration Workflow - RAG4GOV
+
+This document outlines the API interaction sequence between the Frontend (UI) and the RAG Backend.
+
+## Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Frontend
+    participant Backend
+
+    User->>Frontend: Opens Chat App
+    Frontend->>Backend: GET /health
+    Backend-->>Frontend: 200 OK (Status Ready)
+
+    Frontend->>Backend: POST /create_session
+    Backend-->>Frontend: { "session_id": "...", "history": [] }
+
+    User->>Frontend: Types "What are participating institutes?"
+    Frontend->>Backend: POST /ask { "question": "...", "session_id": "..." }
+    Note over Backend: Hybrid Retrieval + LLM Generation
+    Backend-->>Frontend: { "answer": "...", "sources": [...], "retrieved_chunks": [...] }
+
+    Frontend->>User: Displays Answer + Links to Sources
+```
+
+## Detailed Endpoint Specifications
+
+### 1. Initialization
+**Endpoint**: `GET /` or `GET /health`
+- **When**: On app mount / page load.
+- **Purpose**: Verify the backend and all its components (LLM, Vector Store) are online.
+- **Trigger**: Automated check.
+
+---
+
+### 2. Session Setup
+**Endpoint**: `POST /create_session`
+- **When**: When the user starts a new conversation.
+- **Purpose**: Get a unique `session_id` to maintain chat history/context.
+- **Trigger**: Click "New Chat" or first user message.
+- **Response**:
+  ```json
+  {
+    "session_id": "unique-uuid-string"
+  }
+  ```
+
+---
+
+### 3. Asking a Question
+**Endpoint**: `POST /ask`
+- **When**: User sends a message.
+- **Purpose**: Trigger the full RAG pipeline (Retrieval + Generation).
+- **Trigger**: User presses Enter or clicks Send.
+- **Request Body**:
+  ```json
+  {
+    "question": "What are the participating institutes in JAC-2025?",
+    "session_id": "unique-uuid-string"
+  }
+  ```
+- **Key Response Fields**:
+  - [answer](file:///c:/Users/Asus%20tuf/OneDrive/Desktop/New%20folder/LaFleur_Tech/rag4gov/src/retrieval/rag_connector.py#189-246): The text response from the LLM.
+  - [sources](file:///c:/Users/Asus%20tuf/OneDrive/Desktop/New%20folder/LaFleur_Tech/rag4gov/src/retrieval/rag_connector.py#603-646): List of unique documents cited (e.g., `["jac_brochure_2025 (p.7)"]`).
+  - `retrieved_chunks`: (Optional) The raw text fragments retrieved, useful for highlighting citations.
+
+---
+
+### 4. Direct Retrieval Test (Debug Only)
+**Endpoint**: `POST /test_rag`
+- **When**: Developer wants to verify if the correct documents are being found without waiting for the LLM.
+- **Purpose**: Returns the scores and snippets found by the Hybrid Search.
+
+---
+
+## Technical Integration Tips
+
+- **Loading States**: The `/ask` endpoint might take 5-15 seconds depending on your local LLM speed. Use a "Thinking..." or typing indicator.
+- **History**: The backend handles history via the `session_id`. You don't need to send the full history back in every request.
+- **Error Handling**: If the backend returns an error `Generator not initialized`, it usually means the LLM service (Ollama) is booting up or the hybrid index is still being built.
