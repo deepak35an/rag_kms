@@ -32,6 +32,9 @@ const DEFAULT_KBS: KnowledgeBase[] = [
 export default function KnowledgeBasePage() {
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newKBName, setNewKBName] = useState("");
+  const [newKBDesc, setNewKBDesc] = useState("");
 
   // Load from localStorage on mount
   useEffect(() => {
@@ -55,6 +58,27 @@ export default function KnowledgeBasePage() {
     if (selectedId === id) setSelectedId(updated[0]?.id ?? null);
   };
 
+  const handleCreateKB = () => {
+    if (!newKBName.trim()) return;
+    
+    const newKB: KnowledgeBase = {
+      id: `kb-${Date.now()}`,
+      name: newKBName.trim(),
+      description: newKBDesc.trim(),
+      docCount: 0,
+      updatedAt: new Date().toISOString().split("T")[0],
+    };
+    const updated = [...knowledgeBases, newKB];
+    setKnowledgeBases(updated);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    setSelectedId(newKB.id);
+    
+    // Reset modal
+    setShowCreateModal(false);
+    setNewKBName("");
+    setNewKBDesc("");
+  };
+
   const selectedKB = knowledgeBases.find((kb) => kb.id === selectedId);
 
   return (
@@ -68,22 +92,7 @@ export default function KnowledgeBasePage() {
           </p>
         </div>
         <button
-          onClick={() => {
-            const name = prompt("Knowledge base name:");
-            if (!name?.trim()) return;
-            const desc = prompt("Short description:") ?? "";
-            const newKB: KnowledgeBase = {
-              id: `kb-${Date.now()}`,
-              name: name.trim(),
-              description: desc.trim(),
-              docCount: 0,
-              updatedAt: new Date().toISOString().split("T")[0],
-            };
-            const updated = [...knowledgeBases, newKB];
-            setKnowledgeBases(updated);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-            setSelectedId(newKB.id);
-          }}
+          onClick={() => setShowCreateModal(true)}
           className="flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -150,6 +159,80 @@ export default function KnowledgeBasePage() {
       {selectedKB && (
         <div className="mt-2 p-4 bg-blue-50 border border-blue-100 rounded-lg text-sm text-blue-700">
           <span className="font-medium">Selected:</span> {selectedKB.name} — upload section and documents will appear below (Steps 3 &amp; 4).
+        </div>
+      )}
+
+      {/* Create Knowledge Base Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Create Knowledge Base
+              </h3>
+              <button
+                onClick={() => {
+                  setShowCreateModal(false);
+                  setNewKBName("");
+                  setNewKBDesc("");
+                }}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={newKBName}
+                  onChange={(e) => setNewKBName(e.target.value)}
+                  placeholder="e.g., Company Policies"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Description
+                </label>
+                <textarea
+                  value={newKBDesc}
+                  onChange={(e) => setNewKBDesc(e.target.value)}
+                  placeholder="Brief description of this knowledge base..."
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowCreateModal(false);
+                  setNewKBName("");
+                  setNewKBDesc("");
+                }}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateKB}
+                disabled={!newKBName.trim()}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Create
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
