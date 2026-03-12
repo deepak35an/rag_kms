@@ -34,7 +34,8 @@ export default function LoginPage() {
         "contextiq_user",
         JSON.stringify({ name: name || email.split("@")[0], email })
       );
-      router.push("/dashboard");
+      setLoading(false);
+      router.push("/dashboard/knowledge-base");
     }, 800);
   };
 
