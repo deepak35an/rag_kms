@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 interface KnowledgeBase {
   id: string;
@@ -10,7 +10,17 @@ interface KnowledgeBase {
   updatedAt: string;
 }
 
+interface Document {
+  id: string;
+  name: string;
+  uploadDate: string;
+  size: string;
+  status: "processed" | "processing" | "failed";
+  kbId: string;
+}
+
 const STORAGE_KEY = "rag_knowledge_bases";
+const DOCS_STORAGE_KEY = "rag_documents";
 
 const DEFAULT_KBS: KnowledgeBase[] = [
   {
@@ -29,16 +39,48 @@ const DEFAULT_KBS: KnowledgeBase[] = [
   },
 ];
 
+const DEFAULT_DOCS: Document[] = [
+  {
+    id: "doc-1",
+    name: "Company Handbook 2026.pdf",
+    uploadDate: "2026-03-01",
+    size: "2.4 MB",
+    status: "processed",
+    kbId: "kb-1",
+  },
+  {
+    id: "doc-2",
+    name: "HR Policies.pdf",
+    uploadDate: "2026-03-02",
+    size: "1.8 MB",
+    status: "processed",
+    kbId: "kb-1",
+  },
+  {
+    id: "doc-3",
+    name: "API Documentation.pdf",
+    uploadDate: "2026-02-20",
+    size: "3.2 MB",
+    status: "processed",
+    kbId: "kb-2",
+  },
+];
+
 export default function KnowledgeBasePage() {
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
+  const [documents, setDocuments] = useState<Document[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newKBName, setNewKBName] = useState("");
   const [newKBDesc, setNewKBDesc] = useState("");
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load from localStorage on mount
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
+    const storedDocs = localStorage.getItem(DOCS_STORAGE_KEY);
+    
     if (stored) {
       const parsed: KnowledgeBase[] = JSON.parse(stored);
       setKnowledgeBases(parsed);
@@ -47,6 +89,13 @@ export default function KnowledgeBasePage() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_KBS));
       setKnowledgeBases(DEFAULT_KBS);
       setSelectedId(DEFAULT_KBS[0].id);
+    }
+
+    if (storedDocs) {
+      setDocuments(JSON.parse(storedDocs));
+    } else {
+      localStorage.setItem(DOCS_STORAGE_KEY, JSON.stringify(DEFAULT_DOCS));
+      setDocuments(DEFAULT_DOCS);
     }
   }, []);
 
@@ -79,7 +128,65 @@ export default function KnowledgeBasePage() {
     setNewKBDesc("");
   };
 
+  const handleFileUpload = (files: FileList | null) => {
+    if (!files || !selectedId) return;
+    
+    const newDocs: Document[] = Array.from(files).map((file) => ({
+      id: `doc-${Date.now()}-${Math.random()}`,
+      name: file.name,
+      uploadDate: new Date().toISOString().split("T")[0],
+      size: `${(file.size / 1024 / 1024).toFixed(1)} MB`,
+      status: "processed" as const,
+      kbId: selectedId,
+    }));
+
+    const updatedDocs = [...documents, ...newDocs];
+    setDocuments(updatedDocs);
+    localStorage.setItem(DOCS_STORAGE_KEY, JSON.stringify(updatedDocs));
+
+    // Update doc count in KB
+    const updatedKBs = knowledgeBases.map((kb) =>
+      kb.id === selectedId
+        ? { ...kb, docCount: kb.docCount + newDocs.length, updatedAt: new Date().toISOString().split("T")[0] }
+        : kb
+    );
+    setKnowledgeBases(updatedKBs);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedKBs));
+  };
+
+  const handleDeleteDoc = (docId: string) => {
+    const doc = documents.find((d) => d.id === docId);
+    if (!doc) return;
+
+    const updatedDocs = documents.filter((d) => d.id !== docId);
+    setDocuments(updatedDocs);
+    localStorage.setItem(DOCS_STORAGE_KEY, JSON.stringify(updatedDocs));
+
+    // Update doc count in KB
+    const updatedKBs = knowledgeBases.map((kb) =>
+      kb.id === doc.kbId ? { ...kb, docCount: Math.max(0, kb.docCount - 1) } : kb
+    );
+    setKnowledgeBases(updatedKBs);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedKBs));
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    handleFileUpload(e.dataTransfer.files);
+  };
+
   const selectedKB = knowledgeBases.find((kb) => kb.id === selectedId);
+  const selectedDocs = documents.filter((doc) => doc.kbId === selectedId);
 
   return (
     <div className="max-w-5xl">
@@ -157,8 +264,119 @@ export default function KnowledgeBasePage() {
 
       {/* Selected KB info */}
       {selectedKB && (
-        <div className="mt-2 p-4 bg-blue-50 border border-blue-100 rounded-lg text-sm text-blue-700">
-          <span className="font-medium">Selected:</span> {selectedKB.name} — upload section and documents will appear below (Steps 3 &amp; 4).
+        <div className="mt-8 space-y-6">
+          {/* Upload Section */}
+          <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+            <div className="flex items-start gap-3 mb-4">
+              <svg className="w-5 h-5 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              <div>
+                <h3 className="font-semibold text-gray-900 text-sm">
+                  Upload Documents to &quot;{selectedKB.name}&quot;
+                </h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Add PDF documents to this knowledge base for retrieval
+                </p>
+              </div>
+            </div>
+
+            {/* Drag and Drop Area */}
+            <div
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-all ${
+                isDragging
+                  ? "border-blue-500 bg-blue-50"
+                  : "border-gray-300 hover:border-blue-400 hover:bg-gray-100"
+              }`}
+            >
+              <svg className="w-10 h-10 mx-auto mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              <p className="text-sm font-medium text-gray-900 mb-1">
+                Drop files here or click to upload
+              </p>
+              <p className="text-xs text-gray-500">
+                Supports PDF, DOC, DOCX, and TXT files
+              </p>
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept=".pdf,.doc,.docx,.txt"
+              onChange={(e) => handleFileUpload(e.target.files)}
+              className="hidden"
+            />
+          </div>
+
+          {/* Documents List */}
+          {selectedDocs.length > 0 && (
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h3 className="font-semibold text-gray-900 text-sm">
+                  Documents in &quot;{selectedKB.name}&quot;
+                </h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {selectedDocs.length} document{selectedDocs.length !== 1 ? "s" : ""} in this knowledge base
+                </p>
+              </div>
+
+              {/* Table Header */}
+              <div className="px-6 py-3 bg-gray-50 border-b border-gray-200">
+                <div className="grid grid-cols-12 gap-4 text-xs font-medium text-gray-500 uppercase">
+                  <div className="col-span-5">Document Name</div>
+                  <div className="col-span-2">Upload Date</div>
+                  <div className="col-span-2">Size</div>
+                  <div className="col-span-2">Status</div>
+                  <div className="col-span-1">Actions</div>
+                </div>
+              </div>
+
+              {/* Table Body */}
+              <div className="divide-y divide-gray-100">
+                {selectedDocs.map((doc) => (
+                  <div key={doc.id} className="px-6 py-4 hover:bg-gray-50 transition-colors">
+                    <div className="grid grid-cols-12 gap-4 items-center text-sm">
+                      <div className="col-span-5 flex items-center gap-2">
+                        <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                        </svg>
+                        <span className="text-gray-900 truncate">{doc.name}</span>
+                      </div>
+                      <div className="col-span-2 text-gray-500">{doc.uploadDate}</div>
+                      <div className="col-span-2 text-gray-500">{doc.size}</div>
+                      <div className="col-span-2">
+                        <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${
+                          doc.status === "processed"
+                            ? "bg-green-100 text-green-700"
+                            : doc.status === "processing"
+                            ? "bg-yellow-100 text-yellow-700"
+                            : "bg-red-100 text-red-700"
+                        }`}>
+                          {doc.status === "processed" ? "Processed" : doc.status === "processing" ? "Processing" : "Failed"}
+                        </span>
+                      </div>
+                      <div className="col-span-1 flex items-center gap-2">
+                        <button
+                          onClick={() => handleDeleteDoc(doc.id)}
+                          className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                          title="Delete document"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
