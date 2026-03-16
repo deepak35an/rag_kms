@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { uploadDocuments } from "@/app/lib/api";
 
 interface KnowledgeBase {
   id: string;
@@ -17,6 +18,11 @@ interface Document {
   size: string;
   status: "processed" | "processing" | "failed";
   kbId: string;
+}
+
+interface ToastState {
+  type: "success" | "error";
+  message: string;
 }
 
 const STORAGE_KEY = "rag_knowledge_bases";
@@ -81,13 +87,23 @@ function bootstrapKnowledgeBaseState() {
   const knowledgeBases = readJSON<KnowledgeBase[]>(STORAGE_KEY, DEFAULT_KBS);
   const documents = readJSON<Document[]>(DOCS_STORAGE_KEY, DEFAULT_DOCS);
 
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(knowledgeBases));
+  const docCountByKb = documents.reduce<Record<string, number>>((acc, doc) => {
+    acc[doc.kbId] = (acc[doc.kbId] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  const normalizedKbs = knowledgeBases.map((kb) => ({
+    ...kb,
+    docCount: docCountByKb[kb.id] ?? 0,
+  }));
+
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizedKbs));
   localStorage.setItem(DOCS_STORAGE_KEY, JSON.stringify(documents));
 
   return {
-    knowledgeBases,
+    knowledgeBases: normalizedKbs,
     documents,
-    selectedId: knowledgeBases[0]?.id ?? null,
+    selectedId: normalizedKbs[0]?.id ?? null,
   };
 }
 
@@ -116,14 +132,26 @@ export default function KnowledgeBasePage() {
   const [newKBName, setNewKBName] = useState("");
   const [newKBDesc, setNewKBDesc] = useState("");
   const [isDragging, setIsDragging] = useState(false);
+  const [toast, setToast] = useState<ToastState | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const showToast = (message: string, type: ToastState["type"] = "success") => {
+    setToast({ message, type });
+    window.setTimeout(() => setToast(null), 2400);
+  };
 
   const handleDelete = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     const updated = knowledgeBases.filter((kb) => kb.id !== id);
     setKnowledgeBases(updated);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+
+    const updatedDocs = documents.filter((doc) => doc.kbId !== id);
+    setDocuments(updatedDocs);
+    localStorage.setItem(DOCS_STORAGE_KEY, JSON.stringify(updatedDocs));
+
     if (selectedId === id) setSelectedId(updated[0]?.id ?? null);
+    showToast("Knowledge base deleted");
   };
 
   const handleCreateKB = () => {
@@ -145,32 +173,59 @@ export default function KnowledgeBasePage() {
     setShowCreateModal(false);
     setNewKBName("");
     setNewKBDesc("");
+    showToast("Knowledge base created");
   };
 
-  const handleFileUpload = (files: FileList | null) => {
+  const handleFileUpload = async (files: FileList | null) => {
     if (!files || !selectedId) return;
-    
-    const newDocs: Document[] = Array.from(files).map((file) => ({
-      id: `doc-${Date.now()}-${Math.random()}`,
-      name: file.name,
-      uploadDate: new Date().toISOString().split("T")[0],
-      size: `${(file.size / 1024 / 1024).toFixed(1)} MB`,
-      status: "processed" as const,
-      kbId: selectedId,
-    }));
+    const selectedFiles = Array.from(files);
 
-    const updatedDocs = [...documents, ...newDocs];
-    setDocuments(updatedDocs);
-    localStorage.setItem(DOCS_STORAGE_KEY, JSON.stringify(updatedDocs));
+    try {
+      const result = await uploadDocuments(selectedId, selectedFiles);
+      if (result.status !== "success") {
+        showToast(result.message || "Upload failed", "error");
+        return;
+      }
 
-    // Update doc count in KB
-    const updatedKBs = knowledgeBases.map((kb) =>
-      kb.id === selectedId
-        ? { ...kb, docCount: kb.docCount + newDocs.length, updatedAt: new Date().toISOString().split("T")[0] }
-        : kb
-    );
-    setKnowledgeBases(updatedKBs);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedKBs));
+      const uploadedFiles = result.files ?? [];
+      const newDocs: Document[] = uploadedFiles.map((file) => ({
+        id: `doc-${Date.now()}-${Math.random()}`,
+        name: file.original_filename || file.filename,
+        uploadDate: new Date().toISOString().split("T")[0],
+        size: `${(file.size_bytes / 1024 / 1024).toFixed(1)} MB`,
+        status: "processed" as const,
+        kbId: selectedId,
+      }));
+
+      if (newDocs.length === 0) {
+        showToast("No files were uploaded", "error");
+        return;
+      }
+
+      const updatedDocs = [...documents, ...newDocs];
+      setDocuments(updatedDocs);
+      localStorage.setItem(DOCS_STORAGE_KEY, JSON.stringify(updatedDocs));
+
+      // Update doc count in KB
+      const updatedKBs = knowledgeBases.map((kb) =>
+        kb.id === selectedId
+          ? {
+              ...kb,
+              docCount: kb.docCount + newDocs.length,
+              updatedAt: new Date().toISOString().split("T")[0],
+            }
+          : kb
+      );
+      setKnowledgeBases(updatedKBs);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedKBs));
+
+      showToast(`${newDocs.length} document${newDocs.length > 1 ? "s" : ""} uploaded`);
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : "Upload failed",
+        "error"
+      );
+    }
   };
 
   const handleDeleteDoc = (docId: string) => {
@@ -187,6 +242,7 @@ export default function KnowledgeBasePage() {
     );
     setKnowledgeBases(updatedKBs);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedKBs));
+    showToast("Document deleted");
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -208,7 +264,7 @@ export default function KnowledgeBasePage() {
   const selectedDocs = documents.filter((doc) => doc.kbId === selectedId);
 
   return (
-    <div className="max-w-5xl">
+    <div className="max-w-6xl">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
@@ -319,22 +375,20 @@ export default function KnowledgeBasePage() {
                 Drop files here or click to upload
               </p>
               <p className="text-xs text-gray-500">
-                Supports PDF, DOC, DOCX, and TXT files
+                Supports any file type
               </p>
             </div>
             <input
               ref={fileInputRef}
               type="file"
               multiple
-              accept=".pdf,.doc,.docx,.txt"
               onChange={(e) => handleFileUpload(e.target.files)}
               className="hidden"
             />
           </div>
 
           {/* Documents List */}
-          {selectedDocs.length > 0 && (
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
               <div className="px-6 py-4 border-b border-gray-200">
                 <h3 className="font-semibold text-gray-900 text-sm">
                   Documents in &quot;{selectedKB.name}&quot;
@@ -344,58 +398,69 @@ export default function KnowledgeBasePage() {
                 </p>
               </div>
 
-              {/* Table Header */}
-              <div className="px-6 py-3 bg-gray-50 border-b border-gray-200">
-                <div className="grid grid-cols-12 gap-4 text-xs font-medium text-gray-500 uppercase">
-                  <div className="col-span-5">Document Name</div>
-                  <div className="col-span-2">Upload Date</div>
-                  <div className="col-span-2">Size</div>
-                  <div className="col-span-2">Status</div>
-                  <div className="col-span-1">Actions</div>
-                </div>
-              </div>
-
-              {/* Table Body */}
-              <div className="divide-y divide-gray-100">
-                {selectedDocs.map((doc) => (
-                  <div key={doc.id} className="px-6 py-4 hover:bg-gray-50 transition-colors">
-                    <div className="grid grid-cols-12 gap-4 items-center text-sm">
-                      <div className="col-span-5 flex items-center gap-2">
-                        <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-                        </svg>
-                        <span className="text-gray-900 truncate">{doc.name}</span>
-                      </div>
-                      <div className="col-span-2 text-gray-500">{doc.uploadDate}</div>
-                      <div className="col-span-2 text-gray-500">{doc.size}</div>
-                      <div className="col-span-2">
-                        <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${
-                          doc.status === "processed"
-                            ? "bg-green-100 text-green-700"
-                            : doc.status === "processing"
-                            ? "bg-yellow-100 text-yellow-700"
-                            : "bg-red-100 text-red-700"
-                        }`}>
-                          {doc.status === "processed" ? "Processed" : doc.status === "processing" ? "Processing" : "Failed"}
-                        </span>
-                      </div>
-                      <div className="col-span-1 flex items-center gap-2">
-                        <button
-                          onClick={() => handleDeleteDoc(doc.id)}
-                          className="p-1 text-gray-400 hover:text-red-500 transition-colors"
-                          title="Delete document"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                          </svg>
-                        </button>
-                      </div>
+              {selectedDocs.length > 0 ? (
+                <div className="overflow-x-auto">
+                  {/* Table Header */}
+                  <div className="min-w-190 px-6 py-3 bg-gray-50 border-b border-gray-200">
+                    <div className="grid grid-cols-12 gap-4 text-xs font-medium text-gray-500 uppercase">
+                      <div className="col-span-5">Document Name</div>
+                      <div className="col-span-2">Upload Date</div>
+                      <div className="col-span-2">Size</div>
+                      <div className="col-span-2">Status</div>
+                      <div className="col-span-1">Actions</div>
                     </div>
                   </div>
-                ))}
-              </div>
+
+                  {/* Table Body */}
+                  <div className="min-w-190 divide-y divide-gray-100">
+                    {selectedDocs.map((doc) => (
+                      <div key={doc.id} className="px-6 py-4 hover:bg-gray-50 transition-colors">
+                        <div className="grid grid-cols-12 gap-4 items-center text-sm">
+                          <div className="col-span-5 flex items-center gap-2">
+                            <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                            </svg>
+                            <span className="text-gray-900 truncate">{doc.name}</span>
+                          </div>
+                          <div className="col-span-2 text-gray-500">{doc.uploadDate}</div>
+                          <div className="col-span-2 text-gray-500">{doc.size}</div>
+                          <div className="col-span-2">
+                            <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${
+                              doc.status === "processed"
+                                ? "bg-green-100 text-green-700"
+                                : doc.status === "processing"
+                                ? "bg-yellow-100 text-yellow-700"
+                                : "bg-red-100 text-red-700"
+                            }`}>
+                              {doc.status === "processed" ? "Processed" : doc.status === "processing" ? "Processing" : "Failed"}
+                            </span>
+                          </div>
+                          <div className="col-span-1 flex items-center gap-2">
+                            <button
+                              onClick={() => handleDeleteDoc(doc.id)}
+                              className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                              title="Delete document"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="px-6 py-16 text-center text-gray-400">
+                  <svg className="w-10 h-10 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                  </svg>
+                  <p className="font-medium text-gray-500">No documents uploaded yet</p>
+                  <p className="text-xs mt-1">Upload your first document to get started</p>
+                </div>
+              )}
             </div>
-          )}
         </div>
       )}
 
@@ -468,6 +533,27 @@ export default function KnowledgeBasePage() {
               >
                 Create
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {toast && (
+        <div className="fixed right-6 bottom-6 z-50">
+          <div
+            className={`px-4 py-3 rounded-lg border text-sm shadow-lg ${
+              toast.type === "success"
+                ? "bg-white border-green-200 text-gray-800"
+                : "bg-white border-red-200 text-gray-800"
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <span
+                className={`w-2.5 h-2.5 rounded-full ${
+                  toast.type === "success" ? "bg-green-500" : "bg-red-500"
+                }`}
+              />
+              {toast.message}
             </div>
           </div>
         </div>
