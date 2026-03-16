@@ -5,6 +5,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
+  const HARDCODED_EMAIL = "admin@ragplatform.local";
+  const HARDCODED_PASSWORD = "Rag@12345";
+
   const router = useRouter();
   const [tab, setTab] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
@@ -31,9 +34,16 @@ export default function LoginPage() {
       return;
     }
 
+    if (email !== HARDCODED_EMAIL || password !== HARDCODED_PASSWORD) {
+      setError(
+        `Invalid credentials. Use ${HARDCODED_EMAIL} / ${HARDCODED_PASSWORD}`
+      );
+      return;
+    }
+
     setLoading(true);
 
-    // Mock auth — store in localStorage and redirect
+    // Hardcoded auth — store in localStorage and redirect
     setTimeout(() => {
       localStorage.setItem(
         "contextiq_user",
@@ -163,7 +173,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center text-xs text-gray-400 mt-6">
-          By continuing, you agree to ContextIQ&apos;s terms and privacy policy.
+          Demo login is hardcoded: <span className="font-medium">{HARDCODED_EMAIL}</span> / <span className="font-medium">{HARDCODED_PASSWORD}</span>
         </p>
       </div>
     </div>
