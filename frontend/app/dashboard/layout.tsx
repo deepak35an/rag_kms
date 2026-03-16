@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 const navItems = [
   {
@@ -39,8 +39,30 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const hasUser =
+    typeof window !== "undefined" && !!localStorage.getItem("contextiq_user");
+
+  useEffect(() => {
+    if (!hasUser) {
+      router.replace("/login");
+    }
+  }, [hasUser, router]);
+
+  const handleLogout = () => {
+    localStorage.removeItem("contextiq_user");
+    router.replace("/login");
+  };
+
+  if (!hasUser) {
+    return (
+      <div className="min-h-screen bg-gray-50 grid place-items-center">
+        <div className="text-sm text-gray-500">Checking session...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -92,6 +114,18 @@ export default function DashboardLayout({
             );
           })}
         </nav>
+
+        <div className="p-3 border-t border-gray-800">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-7.5a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 006 21h7.5a2.25 2.25 0 002.25-2.25V15m-3 0l3-3m0 0l-3-3m3 3H9" />
+            </svg>
+            Logout
+          </button>
+        </div>
       </aside>
 
       {/* Main content */}

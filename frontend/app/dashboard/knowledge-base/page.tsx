@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 
 interface KnowledgeBase {
   id: string;
@@ -66,38 +66,57 @@ const DEFAULT_DOCS: Document[] = [
   },
 ];
 
+function readJSON<T>(key: string, fallback: T): T {
+  if (typeof window === "undefined") return fallback;
+  const raw = localStorage.getItem(key);
+  if (!raw) return fallback;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+function bootstrapKnowledgeBaseState() {
+  const knowledgeBases = readJSON<KnowledgeBase[]>(STORAGE_KEY, DEFAULT_KBS);
+  const documents = readJSON<Document[]>(DOCS_STORAGE_KEY, DEFAULT_DOCS);
+
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(knowledgeBases));
+  localStorage.setItem(DOCS_STORAGE_KEY, JSON.stringify(documents));
+
+  return {
+    knowledgeBases,
+    documents,
+    selectedId: knowledgeBases[0]?.id ?? null,
+  };
+}
+
 export default function KnowledgeBasePage() {
-  const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
-  const [documents, setDocuments] = useState<Document[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [boot] = useState(() => {
+    if (typeof window === "undefined") {
+      return {
+        knowledgeBases: DEFAULT_KBS,
+        documents: DEFAULT_DOCS,
+        selectedId: DEFAULT_KBS[0]?.id ?? null,
+      };
+    }
+    return bootstrapKnowledgeBaseState();
+  });
+
+  const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>(
+    boot.knowledgeBases
+  );
+  const [documents, setDocuments] = useState<Document[]>(
+    boot.documents
+  );
+  const [selectedId, setSelectedId] = useState<string | null>(
+    boot.selectedId
+  );
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newKBName, setNewKBName] = useState("");
   const [newKBDesc, setNewKBDesc] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Load from localStorage on mount
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    const storedDocs = localStorage.getItem(DOCS_STORAGE_KEY);
-    
-    if (stored) {
-      const parsed: KnowledgeBase[] = JSON.parse(stored);
-      setKnowledgeBases(parsed);
-      if (parsed.length > 0) setSelectedId(parsed[0].id);
-    } else {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_KBS));
-      setKnowledgeBases(DEFAULT_KBS);
-      setSelectedId(DEFAULT_KBS[0].id);
-    }
-
-    if (storedDocs) {
-      setDocuments(JSON.parse(storedDocs));
-    } else {
-      localStorage.setItem(DOCS_STORAGE_KEY, JSON.stringify(DEFAULT_DOCS));
-      setDocuments(DEFAULT_DOCS);
-    }
-  }, []);
 
   const handleDelete = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
