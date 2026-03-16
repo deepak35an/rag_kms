@@ -19,6 +19,22 @@ export interface AskResponse {
   error?: string;
 }
 
+export interface UploadedFileInfo {
+  filename: string;
+  original_filename: string;
+  size_bytes: number;
+  saved_path: string;
+  relative_path: string;
+}
+
+export interface UploadResponse {
+  status: "success" | "error";
+  kb_id?: string;
+  upload_dir?: string;
+  files?: UploadedFileInfo[];
+  message?: string;
+}
+
 // --- API Functions ---
 
 export async function checkHealth(): Promise<HealthResponse> {
@@ -46,5 +62,22 @@ export async function askQuestion(
     body: JSON.stringify({ question, session_id: sessionId }),
   });
   if (!res.ok) throw new Error("Failed to get answer");
+  return res.json();
+}
+
+export async function uploadDocuments(
+  kbId: string,
+  files: File[]
+): Promise<UploadResponse> {
+  const formData = new FormData();
+  formData.append("kb_id", kbId);
+  files.forEach((file) => formData.append("files", file));
+
+  const res = await fetch(`${API_BASE}/upload_documents`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!res.ok) throw new Error("Failed to upload documents");
   return res.json();
 }
