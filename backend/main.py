@@ -38,6 +38,7 @@ if src_dir not in sys.path:
     sys.path.append(src_dir)
 
 from fastapi import FastAPI
+from fastapi import UploadFile, File, Form
 from src.preprocessing.preprocessing import document_processor
 from src.preprocessing.markdown import document_processor as markdown_processor
 from src.models.session_model import SessionManager
@@ -52,6 +53,8 @@ from src.retrieval.rag_connector import RAGConnector
 from src.generation.generator import Generator
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
+import shutil
+import re
 
 import asyncio
 import os
@@ -60,6 +63,15 @@ from asyncio import TimeoutError
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+UPLOAD_ROOT = Path(__file__).parent / "public" / "backend" / "app_uploads"
+UPLOAD_ROOT.mkdir(parents=True, exist_ok=True)
+
+
+def _safe_name(name: str) -> str:
+    """Return a filesystem-safe filename/folder segment."""
+    cleaned = re.sub(r"[^a-zA-Z0-9._-]+", "_", name).strip("._")
+    return cleaned or "untitled"
 
 
 class DownloadRequest(BaseModel):
@@ -243,6 +255,47 @@ async def download_document(request: DownloadRequest):
         return {"status": "success", "message": f"File downloaded successfully: {downloaded_file}"}
     except Exception as e:
         logger.error(f"Error downloading file: {str(e)}")
+        return {"status": "error", "message": str(e)}
+
+
+@app.post("/upload_documents")
+async def upload_documents(
+    kb_id: str = Form(...),
+    files: list[UploadFile] = File(...),
+):
+    """Save uploaded files to backend/public/backend/app_uploads/<kb_id>/"""
+    try:
+        safe_kb = _safe_name(kb_id)
+        target_dir = UPLOAD_ROOT / safe_kb
+        target_dir.mkdir(parents=True, exist_ok=True)
+
+        saved_files = []
+        for file in files:
+            original_name = Path(file.filename or "untitled").name
+            safe_file_name = _safe_name(original_name)
+
+            destination = target_dir / safe_file_name
+            with destination.open("wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+
+            saved_files.append(
+                {
+                    "filename": safe_file_name,
+                    "original_filename": original_name,
+                    "size_bytes": destination.stat().st_size,
+                    "saved_path": str(destination),
+                    "relative_path": str(destination.relative_to(Path(__file__).parent)),
+                }
+            )
+
+        return {
+            "status": "success",
+            "kb_id": safe_kb,
+            "upload_dir": str(target_dir),
+            "files": saved_files,
+        }
+    except Exception as e:
+        logger.error(f"Error uploading files: {str(e)}", exc_info=True)
         return {"status": "error", "message": str(e)}
 
 # ============================================================================
