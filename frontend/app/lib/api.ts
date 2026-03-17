@@ -81,3 +81,23 @@ export async function uploadDocuments(
   if (!res.ok) throw new Error("Failed to upload documents");
   return res.json();
 }
+
+export async function saveChatHistory(
+  conversationId: string,
+  conversationMeta: Record<string, unknown>,
+  messages: Record<string, unknown>[]
+): Promise<{ status: string; file_path?: string; message?: string }> {
+  const res = await fetch(`${API_BASE}/save_chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      conversation_id: conversationId,
+      conversation_meta: conversationMeta,
+      messages: messages,
+    }),
+  });
+  
+  if (!res.ok) throw new Error("Failed to save chat history to backend");
+  return res.json();
+}
+
