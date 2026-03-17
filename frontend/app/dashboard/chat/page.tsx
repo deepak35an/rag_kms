@@ -251,6 +251,19 @@ export default function ChatPage() {
     setInputValue("");
     setIsLoading(true);
 
+    const kbName = knowledgeBases.find((kb) => kb.id === selectedKB)?.name || "";
+    updateConversationMeta(currentConversationId, (conv) => ({
+      ...conv,
+      kbId: selectedKB,
+      kbName,
+      title:
+        conv.title === "New Conversation"
+          ? question.slice(0, 48)
+          : conv.title,
+      preview: question,
+      updatedAt: nowIso(),
+    }), afterUser);
+
     try {
       let sessionId = currentConversation?.sessionId;
 

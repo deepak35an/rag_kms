@@ -83,6 +83,14 @@ class DownloadRequest(BaseModel):
     """
     drive_link: str
 
+class ChatSaveRequest(BaseModel):
+    """
+    Pydantic model for saving chat history.
+    """
+    conversation_id: str
+    conversation_meta: dict
+    messages: list[dict]
+
 # Initialize components
 session_manager = SessionManager()
 embedding_model = EmbeddingModel()
@@ -297,6 +305,36 @@ async def upload_documents(
     except Exception as e:
         logger.error(f"Error uploading files: {str(e)}", exc_info=True)
         return {"status": "error", "message": str(e)}
+
+import json
+
+CHAT_HISTORY_DIR = Path(__file__).parent / "public" / "chat_history"
+CHAT_HISTORY_DIR.mkdir(parents=True, exist_ok=True)
+
+@app.post("/save_chat")
+async def save_chat(data: ChatSaveRequest):
+    """Save an entire chat with messages to a JSON file in public/chat_history"""
+    try:
+        safe_id = _safe_name(data.conversation_id)
+        if not safe_id:
+            return {"status": "error", "message": "Invalid conversation ID"}
+            
+        file_path = CHAT_HISTORY_DIR / f"{safe_id}.json"
+        
+        chat_data = {
+            "conversation_id": data.conversation_id,
+            "meta": data.conversation_meta,
+            "messages": data.messages
+        }
+        
+        with file_path.open("w", encoding="utf-8") as f:
+            json.dump(chat_data, f, indent=2, ensure_ascii=False)
+            
+        return {"status": "success", "file_path": str(file_path.relative_to(Path(__file__).parent))}
+    except Exception as e:
+        logger.error(f"Error saving chat: {str(e)}", exc_info=True)
+        return {"status": "error", "message": str(e)}
+
 
 # ============================================================================
 # VIDORE EVALUATION ENDPOINT (ISOLATED FROM PRODUCTION)
