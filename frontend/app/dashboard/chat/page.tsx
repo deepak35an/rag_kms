@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { askQuestion, createSession } from "@/app/lib/api";
+import { askQuestion, createSession, saveChatHistory } from "@/app/lib/api";
 
 interface Message {
   id: string;
@@ -213,12 +213,24 @@ export default function ChatPage() {
 
   const updateConversationMeta = (
     conversationId: string,
-    updater: (conv: Conversation) => Conversation
+    updater: (conv: Conversation) => Conversation,
+    msgsToSync?: Message[]
   ) => {
     const nextConversations = conversations.map((conv) =>
       conv.id === conversationId ? updater(conv) : conv
     );
     persistConversations(nextConversations);
+
+    if (msgsToSync) {
+      const meta = nextConversations.find((c) => c.id === conversationId);
+      if (meta) {
+        saveChatHistory(
+          conversationId,
+          meta as unknown as Record<string, unknown>,
+          msgsToSync as unknown as Record<string, unknown>[]
+        ).catch((e) => console.error("Failed to sync chat to backend:", e));
+      }
+    }
   };
 
   const handleSend = async () => {
@@ -280,7 +292,7 @@ export default function ChatPage() {
         messageCount: finalMessages.length,
         status: "active",
         updatedAt: nowIso(),
-      }));
+      }), finalMessages);
     } catch (error) {
       const message =
         error instanceof Error
@@ -297,6 +309,15 @@ export default function ChatPage() {
 
       const finalMessages = [...afterUser, assistantMsg];
       persistMessages(currentConversationId, finalMessages);
+      
+      const kbName = knowledgeBases.find((kb) => kb.id === selectedKB)?.name || "";
+      updateConversationMeta(currentConversationId, (conv) => ({
+        ...conv,
+        kbId: selectedKB,
+        kbName,
+        messageCount: finalMessages.length,
+        updatedAt: nowIso(),
+      }), finalMessages);
     } finally {
       setIsLoading(false);
     }
@@ -306,28 +327,28 @@ export default function ChatPage() {
     <div className="flex flex-col h-full w-full max-w-7xl mx-auto">
       <div className="mb-6 flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Ask Questions</h1>
-          <p className="text-gray-500 mt-1 text-sm">
+          <h1 className="text-3xl font-bold text-gray-900">Ask Questions</h1>
+          <p className="text-gray-500 mt-2 text-base">
             Chat with your AI assistant powered by your knowledge base
           </p>
         </div>
         <button
           onClick={createNewConversation}
-          className="flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors"
+          className="flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white text-base font-medium px-5 py-3 rounded-xl transition-colors"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
           New Chat
         </button>
       </div>
 
-      <div className="mb-4 flex flex-wrap gap-2">
+      <div className="mb-5 flex flex-wrap gap-3">
         {conversations.slice(0, 6).map((conv) => (
           <button
             key={conv.id}
             onClick={() => switchConversation(conv.id)}
-            className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
+            className={`text-sm px-4 py-2 rounded-xl border transition-colors ${
               conv.id === currentConversationId
                 ? "border-blue-600 bg-blue-50 text-blue-700"
                 : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
@@ -338,42 +359,42 @@ export default function ChatPage() {
         ))}
         <Link
           href="/dashboard/history"
-          className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+          className="text-sm px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
         >
           View all history
         </Link>
       </div>
 
-      <div className="flex-1 flex flex-col bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden min-h-0">
-        <div className="px-6 py-3 border-b border-gray-200 bg-gray-50">
-          <h2 className="text-sm font-semibold text-gray-900">Conversation</h2>
+      <div className="flex-1 flex flex-col bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden min-h-0">
+        <div className="px-8 py-4 border-b border-gray-200 bg-gray-50">
+          <h2 className="text-base font-semibold text-gray-900">Conversation</h2>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        <div className="flex-1 overflow-y-auto p-8 space-y-6">
           {messages.map((msg) => (
             <div
               key={msg.id}
-              className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}
+              className={`flex gap-4 ${msg.role === "user" ? "flex-row-reverse" : ""}`}
             >
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
                   msg.role === "assistant"
                     ? "bg-blue-600 text-white"
                     : "bg-gray-300 text-gray-700"
                 }`}
               >
                 {msg.role === "assistant" ? (
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
                   </svg>
                 ) : (
-                  <span className="font-medium text-sm">U</span>
+                  <span className="font-medium text-base">U</span>
                 )}
               </div>
 
               <div className={`flex-1 max-w-4xl ${msg.role === "user" ? "text-right" : ""}`}>
                 <div
-                  className={`inline-block rounded-xl px-4 py-3 text-sm whitespace-pre-wrap ${
+                  className={`inline-block rounded-2xl px-5 py-4 text-base whitespace-pre-wrap ${
                     msg.role === "assistant"
                       ? "bg-gray-100 text-gray-900"
                       : "bg-blue-600 text-white"
@@ -381,19 +402,19 @@ export default function ChatPage() {
                 >
                   {msg.content}
                 </div>
-                <div className="text-xs text-gray-400 mt-1 px-1">{msg.timestamp}</div>
+                <div className="text-sm text-gray-400 mt-2 px-2">{msg.timestamp}</div>
               </div>
             </div>
           ))}
 
           {isLoading && (
-            <div className="flex gap-3">
-              <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center shrink-0">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="flex gap-4">
+              <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center shrink-0">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
                 </svg>
               </div>
-              <div className="bg-gray-100 rounded-xl px-4 py-3 text-sm text-gray-500">
+              <div className="bg-gray-100 rounded-2xl px-5 py-4 text-base text-gray-500">
                 Thinking...
               </div>
             </div>
@@ -402,16 +423,16 @@ export default function ChatPage() {
           <div ref={messagesEndRef} />
         </div>
 
-        <div className="p-4 border-t border-gray-100 bg-white">
-          <div className="flex items-center gap-3 mb-3 bg-gray-50 px-4 py-2 rounded-xl border border-gray-100">
-            <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="p-6 border-t border-gray-100 bg-white">
+          <div className="flex items-center gap-3 mb-4 bg-gray-50 px-5 py-3 rounded-xl border border-gray-100">
+            <svg className="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-8.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" />
             </svg>
-            <label className="text-sm font-medium text-gray-700">Knowledge Base:</label>
+            <label className="text-base font-medium text-gray-700">Knowledge Base:</label>
             <select
               value={selectedKB}
               onChange={(e) => setSelectedKB(e.target.value)}
-              className="flex-1 text-sm bg-transparent border-0 focus:ring-0 text-gray-900 cursor-pointer font-medium"
+              className="flex-1 text-base bg-transparent border-0 focus:ring-0 text-gray-900 cursor-pointer font-medium"
             >
               {knowledgeBases.length === 0 ? (
                 <option value="">No knowledge bases available</option>
@@ -426,12 +447,12 @@ export default function ChatPage() {
           </div>
 
           {errorText && (
-            <p className="text-xs text-red-600 mb-3 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+            <p className="text-sm text-red-600 mb-4 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
               {errorText}
             </p>
           )}
 
-          <div className="flex items-center gap-2 bg-gray-50 p-1.5 rounded-2xl border border-gray-200 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent transition-all">
+          <div className="flex items-center gap-3 bg-white p-3 rounded-2xl border border-gray-300 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all shadow-sm">
             <input
               type="text"
               value={inputValue}
@@ -439,14 +460,14 @@ export default function ChatPage() {
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
               placeholder="Ask a question about your documents..."
               disabled={!selectedKB || isLoading}
-              className="flex-1 px-4 py-2.5 bg-transparent text-sm focus:outline-none disabled:cursor-not-allowed text-gray-900 placeholder-gray-500"
+              className="flex-1 px-5 py-3 bg-transparent text-lg focus:outline-none disabled:cursor-not-allowed text-gray-900 placeholder-gray-500"
             />
             <button
               onClick={handleSend}
               disabled={!inputValue.trim() || !selectedKB || isLoading}
-              className="p-3 bg-gray-400 text-white rounded-xl hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="p-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
               </svg>
             </button>
