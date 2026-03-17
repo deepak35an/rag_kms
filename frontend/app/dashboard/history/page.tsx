@@ -88,8 +88,8 @@ export default function HistoryPage() {
   }, [conversations, searchQuery]);
 
   return (
-    <div className="max-w-4xl">
-      <div className="flex items-center justify-between mb-6">
+    <div className="w-full max-w-7xl mx-auto">
+      <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Chat History</h1>
           <p className="text-gray-500 mt-1 text-sm">
@@ -127,7 +127,7 @@ export default function HistoryPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search conversations..."
-            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors"
           />
         </div>
       </div>
@@ -166,45 +166,48 @@ export default function HistoryPage() {
           {filteredConversations.map((conv) => (
             <div
               key={conv.id}
-              className="bg-white rounded-lg border border-gray-200 p-5 hover:shadow-sm transition-shadow"
+              className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-sm transition-shadow flex items-start justify-between"
             >
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center shrink-0 text-blue-700 font-semibold text-sm">
-                  AI
+              <div className="flex items-start gap-4 flex-1 min-w-0 pr-4">
+                <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center shrink-0 text-blue-600">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-8.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" />
+                  </svg>
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-3 mb-2">
-                    <h3 className="font-semibold text-gray-900 text-sm truncate">
+                  <div className="flex items-center gap-3 mb-1">
+                    <h3 className="font-semibold text-gray-900 text-lg">
                       {conv.title || "Conversation"}
                     </h3>
-                    <span
-                      className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium shrink-0 ${
-                        conv.status === "active"
-                          ? "bg-green-100 text-green-700"
-                          : "bg-gray-100 text-gray-600"
-                      }`}
-                    >
-                      {conv.status}
-                    </span>
+                    {conv.status === "active" && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-900 text-white">
+                        active
+                      </span>
+                    )}
                   </div>
-                  <p className="text-sm text-gray-500 mb-3 line-clamp-1">
+                  <p className="text-sm text-gray-600 mb-3 line-clamp-1">
                     {conv.preview || "No preview available"}
                   </p>
-                  <div className="flex items-center justify-between text-xs text-gray-400">
-                    <div className="flex items-center gap-4">
-                      <span>{conv.messageCount} messages</span>
-                      <span>{formatDate(conv.updatedAt)}</span>
-                      {conv.kbName && (
-                        <span className="px-2 py-0.5 rounded bg-gray-100 text-gray-600">
-                          {conv.kbName}
-                        </span>
-                      )}
-                    </div>
+                  <div className="flex items-center gap-4 text-xs text-gray-400">
+                    <span className="flex items-center gap-1">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                      {conv.messageCount} messages
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                      {formatDate(conv.updatedAt)}
+                    </span>
+                    {conv.kbName && (
+                      <span className="px-2 py-0.5 rounded-md bg-gray-100 text-gray-600">
+                        {conv.kbName}
+                      </span>
+                    )}
                   </div>
                 </div>
+              </div>
 
-                <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-3 shrink-0 self-center">
                   <Link
                     href="/dashboard/chat"
                     onClick={() => openConversation(conv.id)}
@@ -241,7 +244,6 @@ export default function HistoryPage() {
                     </svg>
                   </button>
                 </div>
-              </div>
             </div>
           ))}
         </div>

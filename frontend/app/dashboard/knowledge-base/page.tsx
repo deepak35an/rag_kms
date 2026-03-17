@@ -264,7 +264,7 @@ export default function KnowledgeBasePage() {
   const selectedDocs = documents.filter((doc) => doc.kbId === selectedId);
 
   return (
-    <div className="max-w-6xl">
+    <div className="w-full max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
@@ -341,16 +341,16 @@ export default function KnowledgeBasePage() {
       {selectedKB && (
         <div className="mt-8 space-y-6">
           {/* Upload Section */}
-          <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
-            <div className="flex items-start gap-3 mb-4">
+          <div className="bg-white rounded-xl p-8 border border-gray-200">
+            <div className="flex items-start gap-3 mb-6">
               <svg className="w-5 h-5 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
               </svg>
               <div>
-                <h3 className="font-semibold text-gray-900 text-sm">
+                <h3 className="font-semibold text-gray-900 text-base">
                   Upload Documents to &quot;{selectedKB.name}&quot;
                 </h3>
-                <p className="text-xs text-gray-500 mt-0.5">
+                <p className="text-sm text-gray-500 mt-1">
                   Add PDF documents to this knowledge base for retrieval
                 </p>
               </div>
@@ -362,20 +362,20 @@ export default function KnowledgeBasePage() {
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
-              className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-all ${
+              className={`border-2 border-dashed rounded-xl p-16 text-center cursor-pointer transition-all ${
                 isDragging
                   ? "border-blue-500 bg-blue-50"
-                  : "border-gray-300 hover:border-blue-400 hover:bg-gray-100"
+                  : "border-gray-300 hover:border-blue-400 hover:bg-gray-50"
               }`}
             >
-              <svg className="w-10 h-10 mx-auto mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              <svg className="w-10 h-10 mx-auto mb-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
               </svg>
-              <p className="text-sm font-medium text-gray-900 mb-1">
+              <p className="text-base font-semibold text-gray-900 mb-1">
                 Drop files here or click to upload
               </p>
-              <p className="text-xs text-gray-500">
-                Supports any file type
+              <p className="text-sm text-gray-500">
+                Supports PDF, DOC, DOCX, and TXT files
               </p>
             </div>
             <input
@@ -389,11 +389,11 @@ export default function KnowledgeBasePage() {
 
           {/* Documents List */}
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="font-semibold text-gray-900 text-sm">
+              <div className="px-8 py-5 border-b border-gray-200">
+                <h3 className="font-semibold text-gray-900 text-base">
                   Documents in &quot;{selectedKB.name}&quot;
                 </h3>
-                <p className="text-xs text-gray-500 mt-0.5">
+                <p className="text-sm text-gray-500 mt-1">
                   {selectedDocs.length} document{selectedDocs.length !== 1 ? "s" : ""} in this knowledge base
                 </p>
               </div>
