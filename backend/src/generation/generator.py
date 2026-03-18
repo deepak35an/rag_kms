@@ -105,11 +105,19 @@ class Generator:
 
             logger.info(f"Successfully generated response for session {session_id}")
 
+            # Format sources as simple string list for frontend compatibility
+            source_strings = []
+            for s in sources:
+                src_name = s.get("source", "Unknown")
+                src_page = s.get("page", "?")
+                source_strings.append(f"{src_name} (p.{src_page})")
+
             return JSONResponse(content={
                 "session_id": session_id,
                 "question": user_input,
-                "response": answer,
-                "sources": sources
+                "response": answer,         # backward compat
+                "answer": answer,            # frontend reads this key
+                "sources": source_strings,   # frontend expects string[]
             })
 
         except Exception as e:

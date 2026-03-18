@@ -306,6 +306,98 @@ async def upload_documents(
         logger.error(f"Error uploading files: {str(e)}", exc_info=True)
         return {"status": "error", "message": str(e)}
 
+
+class IngestRequest(BaseModel):
+    """Request model for document ingestion."""
+    kb_id: str
+
+
+@app.post("/ingest")
+async def ingest_documents(request: IngestRequest):
+    """
+    Ingest uploaded PDFs into the Qdrant vector store.
+
+    Pipeline: PDF → extract text (pymupdf4llm → pdfplumber → OCR) → chunk → embed → upsert.
+    After ingestion, the BM25 index is rebuilt for hybrid search.
+    """
+    try:
+        safe_kb = _safe_name(request.kb_id)
+        upload_dir = UPLOAD_ROOT / safe_kb
+
+        if not upload_dir.exists():
+            return {"status": "error", "message": f"Upload folder not found for kb_id '{request.kb_id}'"}
+
+        # Find all PDF files in the upload folder
+        pdf_files = list(upload_dir.glob("*.pdf")) + list(upload_dir.glob("*.PDF"))
+        if not pdf_files:
+            return {"status": "error", "message": "No PDF files found in the upload folder"}
+
+        logger.info(f"[/ingest] Found {len(pdf_files)} PDF(s) in {upload_dir}")
+
+        # Step 1: Extract text from each PDF
+        from src.preprocessing.preprocessing import DocumentProcessor
+        doc_processor = DocumentProcessor()
+        all_documents = []
+
+        for pdf_path in pdf_files:
+            pdf_path_str = str(pdf_path)
+            logger.info(f"[/ingest] Processing: {pdf_path.name}")
+
+            # Integrity check
+            if not doc_processor.check_pdf_integrity(pdf_path_str):
+                logger.warning(f"[/ingest] Skipping invalid PDF: {pdf_path.name}")
+                continue
+
+            # Primary extraction with pymupdf4llm
+            documents = doc_processor.load_pdf_with_pymupdf4llm(pdf_path_str)
+
+            # Fallback to pdfplumber
+            if not documents or sum(len(d.page_content) for d in documents) < 100:
+                logger.info(f"[/ingest] Low content from pymupdf4llm, falling back to pdfplumber...")
+                documents = doc_processor.load_pdf_with_pdfplumber(pdf_path_str)
+
+            if not documents:
+                logger.warning(f"[/ingest] No content extracted from {pdf_path.name}")
+                continue
+
+            # Tag each document with the kb_id for potential future filtering
+            for doc in documents:
+                doc.metadata["kb_id"] = safe_kb
+
+            all_documents.extend(documents)
+            logger.info(f"[/ingest] Extracted {len(documents)} pages from {pdf_path.name}")
+
+        if not all_documents:
+            return {"status": "error", "message": "No content could be extracted from the uploaded PDFs"}
+
+        # Step 2: Ingest into Qdrant (chunk + embed + upsert)
+        logger.info(f"[/ingest] Ingesting {len(all_documents)} pages into Qdrant...")
+        initial_count = vector_store.client.count(collection_name=vector_store.collection_name).count
+        await asyncio.to_thread(vector_store.add_documents, all_documents, batch_size=10)
+        final_count = vector_store.client.count(collection_name=vector_store.collection_name).count
+        chunks_created = final_count - initial_count
+
+        logger.info(f"[/ingest] Ingestion complete. {chunks_created} new chunks added to Qdrant.")
+
+        # Step 3: Rebuild BM25 index for hybrid search
+        if rag_connector:
+            logger.info("[/ingest] Rebuilding BM25 index...")
+            await rag_connector.initialize_hybrid_retrieval()
+            logger.info("[/ingest] BM25 index rebuilt successfully.")
+
+        return {
+            "status": "success",
+            "kb_id": safe_kb,
+            "files_ingested": len(pdf_files),
+            "pages_extracted": len(all_documents),
+            "chunks_created": chunks_created,
+        }
+
+    except Exception as e:
+        logger.error(f"[/ingest] Error during ingestion: {str(e)}", exc_info=True)
+        return {"status": "error", "message": str(e)}
+
+
 import json
 
 CHAT_HISTORY_DIR = Path(__file__).parent / "public" / "chat_history"
