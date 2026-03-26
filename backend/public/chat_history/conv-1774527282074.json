@@ -4,11 +4,11 @@
     "id": "conv-1774527282074",
     "title": "hii",
     "preview": "yeah right",
-    "messageCount": 16,
+    "messageCount": 18,
     "status": "active",
     "kbId": "kb-1774527295042",
     "kbName": "trial",
-    "updatedAt": "2026-03-26T12:40:03.722Z"
+    "updatedAt": "2026-03-26T12:40:17.547Z"
   },
   "messages": [
     {
@@ -111,6 +111,12 @@
       "id": "msg-1774528803720",
       "role": "user",
       "content": "yeah right",
+      "timestamp": "06:10 PM"
+    },
+    {
+      "id": "msg-1774528817546-ai",
+      "role": "assistant",
+      "content": "Okay, I understand you’re indicating a lack of satisfaction with the response. I apologize that it didn’t meet your expectations. I will strive to provide more helpful and detailed answers based on the provided context.",
       "timestamp": "06:10 PM"
     }
   ]
