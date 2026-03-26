@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { askQuestion, createSession, saveChatHistory } from "@/app/lib/api";
 
 interface Message {
@@ -122,36 +122,30 @@ function initChatState() {
 }
 
 export default function ChatPage() {
-  const [boot] = useState(() => {
-    if (typeof window === "undefined") {
-      return {
-        knowledgeBases: [] as KnowledgeBase[],
-        conversations: [] as Conversation[],
-        currentConversationId: "",
-        selectedKB: "",
-        messages: [welcomeMessage()] as Message[],
-      };
-    }
-    return initChatState();
-  });
-
-  const [knowledgeBases] = useState<KnowledgeBase[]>(
-    boot.knowledgeBases
-  );
-  const [conversations, setConversations] = useState<Conversation[]>(
-    boot.conversations
-  );
-  const [currentConversationId, setCurrentConversationId] = useState<string>(
-    boot.currentConversationId
-  );
-  const [selectedKB, setSelectedKB] = useState<string>(
-    boot.selectedKB
-  );
-  const [messages, setMessages] = useState<Message[]>(boot.messages);
+  const router = useRouter();
+  const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [currentConversationId, setCurrentConversationId] = useState<string>("");
+  const [selectedKB, setSelectedKB] = useState<string>("");
+  const [messages, setMessages] = useState<Message[]>([welcomeMessage()]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [errorText, setErrorText] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const hydrationDoneRef = useRef(false);
+
+  // Load from localStorage after hydration completes
+  useEffect(() => {
+    if (hydrationDoneRef.current) return;
+    hydrationDoneRef.current = true;
+
+    const state = initChatState();
+    setKnowledgeBases(state.knowledgeBases);
+    setConversations(state.conversations);
+    setCurrentConversationId(state.currentConversationId);
+    setSelectedKB(state.selectedKB);
+    setMessages(state.messages);
+  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -370,12 +364,12 @@ export default function ChatPage() {
             {conv.title || "Conversation"}
           </button>
         ))}
-        <Link
-          href="/dashboard/history"
-          className="text-sm px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+        <button
+          onClick={() => router.push("/dashboard/history")}
+          className="text-sm px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-colors"
         >
           View all history
-        </Link>
+        </button>
       </div>
 
       <div className="flex-1 flex flex-col bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden min-h-0">

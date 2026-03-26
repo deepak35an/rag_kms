@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { uploadDocuments } from "@/app/lib/api";
+import { uploadDocuments, ingestDocuments } from "@/app/lib/api";
 
 interface KnowledgeBase {
   id: string;
@@ -181,6 +181,7 @@ export default function KnowledgeBasePage() {
     const selectedFiles = Array.from(files);
 
     try {
+      // Step 1: Upload files to backend
       const result = await uploadDocuments(selectedId, selectedFiles);
       if (result.status !== "success") {
         showToast(result.message || "Upload failed", "error");
@@ -193,7 +194,7 @@ export default function KnowledgeBasePage() {
         name: file.original_filename || file.filename,
         uploadDate: new Date().toISOString().split("T")[0],
         size: `${(file.size_bytes / 1024 / 1024).toFixed(1)} MB`,
-        status: "processed" as const,
+        status: "processing" as const, // Start with processing status
         kbId: selectedId,
       }));
 
@@ -202,9 +203,56 @@ export default function KnowledgeBasePage() {
         return;
       }
 
+      // Update documents with processing status
       const updatedDocs = [...documents, ...newDocs];
       setDocuments(updatedDocs);
       localStorage.setItem(DOCS_STORAGE_KEY, JSON.stringify(updatedDocs));
+
+      showToast(`${newDocs.length} document${newDocs.length > 1 ? "s" : ""} uploading...`);
+
+      // Step 2: Ingest documents (embed and store in vector DB)
+      try {
+        const ingestResult = await ingestDocuments(selectedId);
+        
+        if (ingestResult.status === "success") {
+          // Update document status to processed
+          const processedDocs = updatedDocs.map((doc) =>
+            doc.kbId === selectedId && newDocs.some((nd) => nd.id === doc.id)
+              ? { ...doc, status: "processed" as const }
+              : doc
+          );
+          setDocuments(processedDocs);
+          localStorage.setItem(DOCS_STORAGE_KEY, JSON.stringify(processedDocs));
+
+          showToast(
+            `Successfully ingested ${ingestResult.chunks_created || 0} chunks from documents`,
+            "success"
+          );
+        } else {
+          showToast(ingestResult.message || "Ingestion failed", "error");
+          // Keep documents but mark as failed
+          const failedDocs = updatedDocs.map((doc) =>
+            doc.kbId === selectedId && newDocs.some((nd) => nd.id === doc.id)
+              ? { ...doc, status: "failed" as const }
+              : doc
+          );
+          setDocuments(failedDocs);
+          localStorage.setItem(DOCS_STORAGE_KEY, JSON.stringify(failedDocs));
+        }
+      } catch (ingestError) {
+        showToast(
+          ingestError instanceof Error ? ingestError.message : "Ingestion failed",
+          "error"
+        );
+        // Mark documents as failed
+        const failedDocs = updatedDocs.map((doc) =>
+          doc.kbId === selectedId && newDocs.some((nd) => nd.id === doc.id)
+            ? { ...doc, status: "failed" as const }
+            : doc
+        );
+        setDocuments(failedDocs);
+        localStorage.setItem(DOCS_STORAGE_KEY, JSON.stringify(failedDocs));
+      }
 
       // Update doc count in KB
       const updatedKBs = knowledgeBases.map((kb) =>
@@ -218,8 +266,6 @@ export default function KnowledgeBasePage() {
       );
       setKnowledgeBases(updatedKBs);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedKBs));
-
-      showToast(`${newDocs.length} document${newDocs.length > 1 ? "s" : ""} uploaded`);
     } catch (error) {
       showToast(
         error instanceof Error ? error.message : "Upload failed",

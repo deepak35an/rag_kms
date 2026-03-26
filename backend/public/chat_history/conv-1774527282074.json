@@ -1,0 +1,45 @@
+{
+  "conversation_id": "conv-1774527282074",
+  "meta": {
+    "id": "conv-1774527282074",
+    "title": "New Conversation",
+    "preview": "",
+    "messageCount": 5,
+    "status": "active",
+    "kbId": "kb-1774527295042",
+    "kbName": "trial",
+    "updatedAt": "2026-03-26T12:17:14.557Z"
+  },
+  "messages": [
+    {
+      "id": "welcome-1774527282074",
+      "role": "assistant",
+      "content": "Hello! I'm your AI assistant. Select a knowledge base and ask me anything about your uploaded documents.",
+      "timestamp": "05:44 PM"
+    },
+    {
+      "id": "msg-1774527324731",
+      "role": "user",
+      "content": "ok",
+      "timestamp": "05:45 PM"
+    },
+    {
+      "id": "msg-1774527324750-err",
+      "role": "assistant",
+      "content": "Sorry, I couldn't get a response. Failed to get answer",
+      "timestamp": "05:45 PM"
+    },
+    {
+      "id": "msg-1774527434525",
+      "role": "user",
+      "content": "ok",
+      "timestamp": "05:47 PM"
+    },
+    {
+      "id": "msg-1774527434557-err",
+      "role": "assistant",
+      "content": "Sorry, I couldn't get a response. Failed to get answer",
+      "timestamp": "05:47 PM"
+    }
+  ]
+}

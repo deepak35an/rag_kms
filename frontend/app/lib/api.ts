@@ -35,6 +35,15 @@ export interface UploadResponse {
   message?: string;
 }
 
+export interface IngestResponse {
+  status: "success" | "error";
+  kb_id?: string;
+  files_ingested?: number;
+  pages_extracted?: number;
+  chunks_created?: number;
+  message?: string;
+}
+
 // --- API Functions ---
 
 export async function checkHealth(): Promise<HealthResponse> {
@@ -79,6 +88,19 @@ export async function uploadDocuments(
   });
 
   if (!res.ok) throw new Error("Failed to upload documents");
+  return res.json();
+}
+
+export async function ingestDocuments(
+  kbId: string
+): Promise<IngestResponse> {
+  const res = await fetch(`${API_BASE}/ingest`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ kb_id: kbId }),
+  });
+
+  if (!res.ok) throw new Error("Failed to ingest documents");
   return res.json();
 }
 

@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
+import { useState } from "react";
 
 const navItems = [
   {
@@ -42,27 +43,23 @@ export default function DashboardLayout({
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const hasUser =
-    typeof window !== "undefined" && !!localStorage.getItem("contextiq_user");
+  const authCheckRef = useRef(false);
 
   useEffect(() => {
-    if (!hasUser) {
-      router.replace("/login");
+    // Only check auth once on client side
+    if (!authCheckRef.current) {
+      authCheckRef.current = true;
+      const user = localStorage.getItem("contextiq_user");
+      if (!user) {
+        router.replace("/login");
+      }
     }
-  }, [hasUser, router]);
+  }, [router]);
 
   const handleLogout = () => {
     localStorage.removeItem("contextiq_user");
     router.replace("/login");
   };
-
-  if (!hasUser) {
-    return (
-      <div className="min-h-screen bg-gray-50 grid place-items-center">
-        <div className="text-sm text-gray-500">Checking session...</div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex overflow-hidden">
