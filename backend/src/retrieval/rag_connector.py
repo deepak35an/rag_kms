@@ -39,8 +39,8 @@ class RAGConnector:
 
     # ... _initialize_llm kept as is ... (omitted in replacement if not targeted, but I will include it to be safe)
     def _initialize_llm(self):
-        """Initialize LLM: try Ollama first, fallback to mock LLM for testing."""
-        # --- Local Ollama (gemma3:4b) ---
+        """Initialize LLM: only use local Ollama."""
+        # --- Local Ollama (llama3.2:3b-instruct-q4_K_M) ---
         if OLLAMA_AVAILABLE:
             try:
                 llm = ChatOllama(
@@ -50,35 +50,15 @@ class RAGConnector:
                 )
                 # Ping Ollama to confirm it's running
                 llm.invoke("ping")
-                logger.info("✅ Using local Ollama LLM: gemma3:4b")
+                logger.info("Using local Ollama LLM: gemma3:4b")
                 return llm
             except Exception as e:
-                logger.warning(f"⚠️ Ollama LLM not available: {e}")
-                logger.info("Falling back to mock LLM for testing...")
-        
-        # Fallback: MockLLM for testing (when Ollama not available)
-        logger.info("✅ Using MockLLM (for testing without Ollama)")
-        return MockLLM()
-
-
-class MockLLM:
-    """Mock LLM for testing when Ollama is not available."""
-    def invoke(self, input_data: str) -> str:
-        """Mock LLM response based on input."""
-        mock_responses = {
-            "ping": "pong",
-            "hello": "Hello! I'm a mock AI assistant for testing.",
-            "default": "Based on the retrieved documents, here's what I found: The system is working correctly with hybrid retrieval and semantic search. Additional details can be found in the uploaded documents."
-        }
-        input_lower = str(input_data).lower()
-        for key, response in mock_responses.items():
-            if key in input_lower:
-                return response
-        return mock_responses["default"]
-    
-    async def ainvoke(self, input_data: str) -> str:
-        """Async mock LLM response."""
-        return self.invoke(input_data)
+                logger.error(f"FATAL: Local Ollama LLM failed to initialize or is not reachable: {e}")
+                logger.error("Please ensure Ollama is installed and running with 'ollama serve'.")
+                return None
+        else:
+            logger.error("FATAL: langchain-ollama is not installed. LLM features will be disabled.")
+            return None
 
     async def initialize_hybrid_retrieval(self):
         """Build BM25 index from all documents in vector store."""

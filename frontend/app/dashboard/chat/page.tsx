@@ -127,7 +127,7 @@ export default function ChatPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string>("");
   const [selectedKB, setSelectedKB] = useState<string>("");
-  const [messages, setMessages] = useState<Message[]>([welcomeMessage()]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [errorText, setErrorText] = useState("");

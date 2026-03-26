@@ -2,13 +2,13 @@
   "conversation_id": "conv-1774527282074",
   "meta": {
     "id": "conv-1774527282074",
-    "title": "New Conversation",
-    "preview": "",
-    "messageCount": 5,
+    "title": "hii",
+    "preview": "yeah right",
+    "messageCount": 16,
     "status": "active",
     "kbId": "kb-1774527295042",
     "kbName": "trial",
-    "updatedAt": "2026-03-26T12:17:14.557Z"
+    "updatedAt": "2026-03-26T12:40:03.722Z"
   },
   "messages": [
     {
@@ -40,6 +40,78 @@
       "role": "assistant",
       "content": "Sorry, I couldn't get a response. Failed to get answer",
       "timestamp": "05:47 PM"
+    },
+    {
+      "id": "msg-1774527939249",
+      "role": "user",
+      "content": "ok",
+      "timestamp": "05:55 PM"
+    },
+    {
+      "id": "msg-1774527962193-err",
+      "role": "assistant",
+      "content": "Sorry, I couldn't get a response. Failed to fetch",
+      "timestamp": "05:56 PM"
+    },
+    {
+      "id": "msg-1774527967793",
+      "role": "user",
+      "content": "so how are u",
+      "timestamp": "05:56 PM"
+    },
+    {
+      "id": "msg-1774528067612-err",
+      "role": "assistant",
+      "content": "Sorry, I couldn't get a response. Failed to fetch",
+      "timestamp": "05:57 PM"
+    },
+    {
+      "id": "msg-1774528071317",
+      "role": "user",
+      "content": "hii",
+      "timestamp": "05:57 PM"
+    },
+    {
+      "id": "msg-1774528524946",
+      "role": "user",
+      "content": "now",
+      "timestamp": "06:05 PM"
+    },
+    {
+      "id": "msg-1774528544261-err",
+      "role": "assistant",
+      "content": "Sorry, I couldn't get a response. Failed to fetch",
+      "timestamp": "06:05 PM"
+    },
+    {
+      "id": "msg-1774528740756",
+      "role": "user",
+      "content": "hii",
+      "timestamp": "06:09 PM"
+    },
+    {
+      "id": "msg-1774528753099-ai",
+      "role": "assistant",
+      "content": "Hello there! How can I help you today? Do you have a question about the provided text, or would you like me to perform a specific task based on it?",
+      "timestamp": "06:09 PM"
+    },
+    {
+      "id": "msg-1774528778212",
+      "role": "user",
+      "content": "do you have that churn data?",
+      "timestamp": "06:09 PM"
+    },
+    {
+      "id": "msg-1774528793131-ai",
+      "role": "assistant",
+      "content": "I do not have the churn data itself. I can only provide information about the dataset based on the provided context. [1] The dataset is the “Telco Customer Churn” dataset from Kaggle, containing 7,043 customer records.\n\nSources:\n• Churn_1_ (p.9)\n• Churn_1_ (p.9)",
+      "timestamp": "06:09 PM"
+    },
+    {
+      "id": "msg-1774528803720",
+      "role": "user",
+      "content": "yeah right",
+      "timestamp": "06:10 PM"
     }
   ]
 }

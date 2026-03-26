@@ -1,0 +1,10 @@
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Runtime/generated backend artifacts
+backend/public/backend/app_uploads/
+backend/public/chat_history/
+
+# Local Python virtual env at repo root
+.venv/
