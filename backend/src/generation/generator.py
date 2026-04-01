@@ -44,32 +44,108 @@ class Generator:
         self.session_manager = session_manager
         self.vectorizer = TfidfVectorizer(lowercase=True, stop_words='english')
 
-    async def generate_response(self, data: Dict[str, str]) -> JSONResponse:
-        """
-        Generate a response for the user's question.
-        
-        Args:
-            data: Dictionary containing 'session_id' and 'question'
-            
-        Returns:
-            JSONResponse: Contains generated answer or error message
-            
-        Raises:
-            HTTPException: If session_id or question is missing
-        """
+    async def retrieve_chunks(self, data: Dict[str, Any]) -> JSONResponse:
+        """Step 1: Contextualize question and retrieve candidate chunks."""
         session_id = data.get("session_id")
         user_input = data.get("question")
+        kb_id = data.get("kb_id")
+
+        if not session_id or not user_input:
+            raise HTTPException(status_code=400, detail="Session ID and question are required.")
+
+        try:
+            # 1. Get standalone question (contextualized)
+            standalone_q = await self.rag_model.get_standalone_question(user_input, session_id)
+            logger.info(f"Contextualized query: {standalone_q}")
+
+            # 2. Retrieve chunks using hybrid search
+            retrieved_docs = await self.rag_model.hybrid_similarity_search(standalone_q, k=10, kb_id=kb_id)
+            
+            # 3. Format for selection
+            formatted_chunks = self.rag_model._format_docs_for_selection(retrieved_docs)
+
+            return JSONResponse(content={
+                "session_id": session_id,
+                "original_question": user_input,
+                "standalone_question": standalone_q,
+                "chunks": formatted_chunks
+            })
+        except Exception as e:
+            logger.error(f"Error in retrieve_chunks: {str(e)}")
+            raise HTTPException(status_code=500, detail=str(e))
+
+    async def generate_from_selected(self, data: Dict[str, Any]) -> JSONResponse:
+        """Step 2: Generate answer using user-selected chunks."""
+        session_id = data.get("session_id")
+        question = data.get("question")
+        selected_chunks = data.get("selected_chunks", [])
+
+        if not session_id or not question or not selected_chunks:
+            raise HTTPException(status_code=400, detail="Session ID, question, and selected chunks are required.")
+
+        try:
+            # 1. Format context from selected chunks
+            context_parts = []
+            for i, chunk in enumerate(selected_chunks, 1):
+                content = chunk.get("content", "")
+                metadata = chunk.get("metadata", {})
+                source = metadata.get("source", "Unknown")
+                page = metadata.get("page", "?")
+                context_parts.append(
+                    f"--- [CHUNK {i}] ---\nSOURCE: {source}\nPAGE: {page}\nCONTENT:\n{content.strip()}\n"
+                )
+            context = "\n\n".join(context_parts)
+
+            # 2. Generate answer
+            answer = await self.rag_model.generate_from_context(question, context, session_id)
+
+            # 3. Update session history
+            self.session_manager.update_session_history(session_id, question, answer)
+
+            # 4. Extract sources for response
+            source_strings = []
+            seen_sources = set()
+            for chunk in selected_chunks:
+                metadata = chunk.get("metadata", {})
+                src_name = metadata.get("source", "Unknown")
+                src_page = metadata.get("page", "?")
+                src_str = f"{src_name} (p.{src_page})"
+                if src_str not in seen_sources:
+                    source_strings.append(src_str)
+                    seen_sources.add(src_str)
+
+            return JSONResponse(content={
+                "session_id": session_id,
+                "question": question,
+                "answer": answer,
+                "sources": source_strings
+            })
+        except Exception as e:
+            logger.error(f"Error in generate_from_selected: {str(e)}")
+            raise HTTPException(status_code=500, detail=str(e))
+
+    async def generate_response(self, data: Dict[str, str]) -> JSONResponse:
+        """DEPRECATED: Legacy unified RAG flow."""
+        # For backward compatibility, we can still use the old chain or redirect
+        # But per user request, we are moving to the decoupled flow.
+        session_id = data.get("session_id")
+        user_input = data.get("question")
+        kb_id = data.get("kb_id")
 
         if not session_id or not user_input:
             raise HTTPException(status_code=400, detail="Session ID and question are required.")
 
         session_history = self.session_manager.get_session_history(session_id)
-        logger.info(f"Generating response for session {session_id}: {user_input[:50]}...")
+        logger.info(
+            f"Generating response for session {session_id} "
+            f"[kb_id={kb_id or 'global'}]: {user_input[:50]}..."
+        )
 
         try:
             # Create conversational chain with message history
+            # Pass kb_id so retrieval is scoped to the selected knowledge base
             conversational_rag_chain = RunnableWithMessageHistory(
-                self.rag_model.get_chain(user_input),
+                self.rag_model.get_chain(user_input, kb_id=kb_id),
                 lambda session: session_history,
                 input_messages_key="input",
                 history_messages_key="chat_history",
@@ -85,27 +161,11 @@ class Generator:
             answer = response.get("answer", "Currently, this information is not available.")
             retrieved_docs = response.get("context", [])
             
-            # Safety check: ensure retrieved_docs is not a coroutine
-            if asyncio.iscoroutine(retrieved_docs):
-                logger.error("CRITICAL: retrieved_docs is a coroutine, not a list. Async pipeline error.")
-                retrieved_docs = await retrieved_docs # Emergency await
-            
-            # Log retrieved documents for debugging
-            for i, doc in enumerate(retrieved_docs):
-                logger.debug(f"Retrieved doc {i}: page={doc.metadata.get('page')}, source={doc.metadata.get('source')}, content={doc.page_content[:50]}...")
-
-            # Apply cosine similarity for better relevance scoring
-            validated_docs = self._validate_retrieved_docs_with_cosine(retrieved_docs, user_input)
-            
-            # Extract source information from validated documents
-            sources = self._extract_sources(validated_docs)
-
             # Update session history
             self.session_manager.update_session_history(session_id, user_input, answer)
 
-            logger.info(f"Successfully generated response for session {session_id}")
-
             # Format sources as simple string list for frontend compatibility
+            sources = self._extract_sources(retrieved_docs)
             source_strings = []
             for s in sources:
                 src_name = s.get("source", "Unknown")
@@ -115,13 +175,12 @@ class Generator:
             return JSONResponse(content={
                 "session_id": session_id,
                 "question": user_input,
-                "response": answer,         # backward compat
-                "answer": answer,            # frontend reads this key
-                "sources": source_strings,   # frontend expects string[]
+                "answer": answer,
+                "sources": source_strings,
             })
 
         except Exception as e:
-            logger.error(f"Error generating response for session {session_id}: {str(e)}")
+            logger.error(f"Error in legacy generate_response: {str(e)}")
             raise HTTPException(status_code=500, detail=str(e))
 
     def _extract_sources(self, documents: List[Any]) -> List[Dict[str, Any]]:

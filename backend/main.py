@@ -91,6 +91,28 @@ class ChatSaveRequest(BaseModel):
     conversation_meta: dict
     messages: list[dict]
 
+class IngestRequest(BaseModel):
+    """
+    Pydantic model for document ingestion requests.
+    """
+    kb_id: str
+
+class RetrieveRequest(BaseModel):
+    """
+    Pydantic model for separate retrieval step.
+    """
+    question: str
+    session_id: str
+    kb_id: str
+
+class GenerateRequest(BaseModel):
+    """
+    Pydantic model for separate generation step.
+    """
+    question: str
+    session_id: str
+    selected_chunks: list[dict] # Documents/chunks selected by user
+
 # Initialize components
 session_manager = SessionManager()
 embedding_model = EmbeddingModel()
@@ -171,11 +193,26 @@ async def create_session():
     """Create a new chat session."""
     return session_manager.create_session()
 
+@app.post("/retrieve")
+async def retrieve_only(request: RetrieveRequest):
+    """Step 1: Retrieve relevant documents for a question."""
+    if generator is None:
+        return {"error": "Generator not initialized."}
+    return await generator.retrieve_chunks(request.dict())
+
+@app.post("/generate")
+async def generate_only(request: GenerateRequest):
+    """Step 2: Generate an answer using user-selected chunks."""
+    if generator is None:
+        return {"error": "Generator not initialized."}
+    return await generator.generate_from_selected(request.dict())
+
 @app.post("/ask")
 async def ask_question(data: dict):
-    """Process a question and return the response."""
+    """DEPRECATED: Process a question in a single step."""
     if generator is None:
         return {"error": "Generator not initialized. Server may still be starting up."}
+    # For now, redirect to the legacy generation but we'll eventually move to the 2-step flow
     return await generator.generate_response(data) # type: ignore
 
 @app.post("/test_rag")
@@ -370,7 +407,15 @@ async def ingest_documents(request: IngestRequest):
         if not all_documents:
             return {"status": "error", "message": "No content could be extracted from the uploaded PDFs"}
 
-        # Step 2: Ingest into Qdrant (chunk + embed + upsert)
+        # Step 2: Save Markdown artifacts to KB-specific subfolder
+        markdown_root = Path(__file__).parent / "public" / "backend" / "markdowns"
+        kb_markdown_dir = markdown_root / safe_kb
+        kb_markdown_dir.mkdir(parents=True, exist_ok=True)
+        
+        logger.info(f"[/ingest] Saving markdown artifacts to {kb_markdown_dir}...")
+        doc_processor.generate_markdown_output(all_documents, output_folder=str(kb_markdown_dir))
+
+        # Step 3: Ingest into Qdrant (chunk + embed + upsert)
         logger.info(f"[/ingest] Ingesting {len(all_documents)} pages into Qdrant...")
         initial_count = vector_store.client.count(collection_name=vector_store.collection_name).count
         await asyncio.to_thread(vector_store.add_documents, all_documents, batch_size=10)
@@ -379,11 +424,34 @@ async def ingest_documents(request: IngestRequest):
 
         logger.info(f"[/ingest] Ingestion complete. {chunks_created} new chunks added to Qdrant.")
 
-        # Step 3: Rebuild BM25 index for hybrid search
+        # Step 3: Rebuild both global and per-KB BM25 indexes
         if rag_connector:
-            logger.info("[/ingest] Rebuilding BM25 index...")
+            logger.info("[/ingest] Rebuilding global BM25 index...")
             await rag_connector.initialize_hybrid_retrieval()
-            logger.info("[/ingest] BM25 index rebuilt successfully.")
+            logger.info("[/ingest] Rebuilding per-KB BM25 index for '%s'...", safe_kb)
+            await rag_connector.initialize_hybrid_retrieval(kb_id=safe_kb)
+            logger.info("[/ingest] BM25 indexes rebuilt successfully.")
+
+        # Step 4: Record per-file ingest status in docs_status.json
+        from datetime import datetime, timezone
+        docs_status = {}
+        try:
+            docs_status_path = upload_dir / "docs_status.json"
+            if docs_status_path.exists():
+                with docs_status_path.open("r", encoding="utf-8") as f:
+                    docs_status = json.load(f)
+        except Exception:
+            pass
+
+        chunks_per_file = chunks_created // max(len(pdf_files), 1)
+        for pdf_path in pdf_files:
+            docs_status[pdf_path.name] = {
+                "status": "ingested",
+                "chunks_created": chunks_per_file,
+                "uploaded_at": datetime.now(timezone.utc).isoformat(),
+            }
+        with (upload_dir / "docs_status.json").open("w", encoding="utf-8") as f:
+            json.dump(docs_status, f, indent=2, ensure_ascii=False)
 
         return {
             "status": "success",
@@ -425,6 +493,277 @@ async def save_chat(data: ChatSaveRequest):
         return {"status": "success", "file_path": str(file_path.relative_to(Path(__file__).parent))}
     except Exception as e:
         logger.error(f"Error saving chat: {str(e)}", exc_info=True)
+        return {"status": "error", "message": str(e)}
+
+
+# ============================================================================
+# KNOWLEDGE BASE MANAGEMENT ENDPOINTS
+# ============================================================================
+
+KB_META_FILE = "meta.json"
+DOCS_STATUS_FILE = "docs_status.json"
+
+
+def _read_kb_meta(kb_dir: Path) -> dict:
+    """Read meta.json from a KB folder, returning defaults if missing."""
+    meta_path = kb_dir / KB_META_FILE
+    if meta_path.exists():
+        try:
+            with meta_path.open("r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {"name": kb_dir.name, "description": "", "created_at": ""}
+
+
+def _write_kb_meta(kb_dir: Path, name: str, description: str, created_at: str) -> None:
+    """Write meta.json to a KB folder."""
+    meta = {"name": name, "description": description, "created_at": created_at}
+    with (kb_dir / KB_META_FILE).open("w", encoding="utf-8") as f:
+        json.dump(meta, f, indent=2, ensure_ascii=False)
+
+
+def _read_docs_status(kb_dir: Path) -> dict:
+    """Read docs_status.json from a KB folder."""
+    status_path = kb_dir / DOCS_STATUS_FILE
+    if status_path.exists():
+        try:
+            with status_path.open("r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+
+def _write_docs_status(kb_dir: Path, status: dict) -> None:
+    """Write docs_status.json to a KB folder."""
+    with (kb_dir / DOCS_STATUS_FILE).open("w", encoding="utf-8") as f:
+        json.dump(status, f, indent=2, ensure_ascii=False)
+
+
+@app.get("/list_kbs")
+async def list_kbs():
+    """
+    List all knowledge bases currently stored on the server.
+    Each KB is a subdirectory of UPLOAD_ROOT with an optional meta.json.
+    """
+    try:
+        kbs = []
+        for kb_dir in sorted(UPLOAD_ROOT.iterdir()):
+            if not kb_dir.is_dir():
+                continue
+            meta = _read_kb_meta(kb_dir)
+            # Count non-sidecar files
+            doc_files = [
+                f for f in kb_dir.iterdir()
+                if f.is_file() and f.name not in (KB_META_FILE, DOCS_STATUS_FILE)
+            ]
+            kbs.append({
+                "id": kb_dir.name,
+                "name": meta.get("name", kb_dir.name),
+                "description": meta.get("description", ""),
+                "doc_count": len(doc_files),
+                "created_at": meta.get("created_at", ""),
+            })
+        return {"status": "success", "knowledge_bases": kbs}
+    except Exception as e:
+        logger.error(f"[/list_kbs] Error: {e}", exc_info=True)
+        return {"status": "error", "message": str(e)}
+
+
+class CreateKBRequest(BaseModel):
+    """Request model for creating a new knowledge base."""
+    id: str
+    name: str
+    description: str = ""
+
+
+@app.post("/create_kb")
+async def create_kb(request: CreateKBRequest):
+    """Create a new knowledge base folder with metadata."""
+    try:
+        safe_id = _safe_name(request.id)
+        kb_dir = UPLOAD_ROOT / safe_id
+
+        if kb_dir.exists():
+            # KB already exists — just update meta
+            pass
+        else:
+            kb_dir.mkdir(parents=True, exist_ok=True)
+
+        from datetime import datetime, timezone
+        created_at = datetime.now(timezone.utc).isoformat()
+        _write_kb_meta(kb_dir, request.name.strip(), request.description.strip(), created_at)
+
+        return {
+            "status": "success",
+            "id": safe_id,
+            "name": request.name.strip(),
+            "description": request.description.strip(),
+            "created_at": created_at,
+        }
+    except Exception as e:
+        logger.error(f"[/create_kb] Error: {e}", exc_info=True)
+        return {"status": "error", "message": str(e)}
+
+
+@app.delete("/delete_kb/{kb_id}")
+async def delete_kb(kb_id: str):
+    """
+    Delete a knowledge base folder and all its files from disk.
+    Note: vectors already pushed to Qdrant are NOT removed (global collection).
+    """
+    try:
+        safe_id = _safe_name(kb_id)
+        kb_dir = UPLOAD_ROOT / safe_id
+
+        if not kb_dir.exists():
+            return {"status": "error", "message": f"KB '{kb_id}' not found"}
+
+        import shutil as _shutil
+        # Delete PDF folder
+        if kb_dir.exists():
+            _shutil.rmtree(kb_dir)
+            logger.info(f"[/delete_kb] Deleted KB PDF folder: {kb_dir}")
+
+        # Delete Markdown folder
+        markdown_root = Path(__file__).parent / "public" / "backend" / "markdowns"
+        kb_md_dir = markdown_root / safe_id
+        if kb_md_dir.exists():
+            _shutil.rmtree(kb_md_dir)
+            logger.info(f"[/delete_kb] Deleted KB Markdown folder: {kb_md_dir}")
+
+        return {"status": "success", "message": f"KB '{safe_id}' deleted"}
+    except Exception as e:
+        logger.error(f"[/delete_kb] Error: {e}", exc_info=True)
+        return {"status": "error", "message": str(e)}
+
+
+# ============================================================================
+# DOCUMENT MANAGEMENT ENDPOINTS
+# ============================================================================
+
+@app.get("/list_docs/{kb_id}")
+async def list_docs(kb_id: str):
+    """List all documents stored in a specific knowledge base folder."""
+    try:
+        safe_id = _safe_name(kb_id)
+        kb_dir = UPLOAD_ROOT / safe_id
+
+        if not kb_dir.exists():
+            return {"status": "error", "message": f"KB '{kb_id}' not found"}
+
+        docs_status = _read_docs_status(kb_dir)
+        docs = []
+        for f in sorted(kb_dir.iterdir()):
+            if not f.is_file() or f.name in (KB_META_FILE, DOCS_STATUS_FILE):
+                continue
+            stat = f.stat()
+            file_status = docs_status.get(f.name, {})
+            docs.append({
+                "filename": f.name,
+                "size_bytes": stat.st_size,
+                "ingest_status": file_status.get("status", "uploaded"),
+                "chunks_created": file_status.get("chunks_created", 0),
+                "uploaded_at": file_status.get("uploaded_at", ""),
+            })
+
+        return {"status": "success", "kb_id": safe_id, "documents": docs}
+    except Exception as e:
+        logger.error(f"[/list_docs] Error: {e}", exc_info=True)
+        return {"status": "error", "message": str(e)}
+
+
+@app.delete("/delete_doc/{kb_id}/{filename}")
+async def delete_doc(kb_id: str, filename: str):
+    """Delete a single document from a knowledge base folder."""
+    try:
+        safe_id = _safe_name(kb_id)
+        safe_file = _safe_name(filename)
+        kb_dir = UPLOAD_ROOT / safe_id
+        file_path = kb_dir / safe_file
+
+        if not file_path.exists():
+            return {"status": "error", "message": f"File '{safe_file}' not found in KB '{safe_id}'"}
+
+        file_path.unlink()
+        logger.info(f"[/delete_doc] Deleted PDF: {file_path}")
+
+        # Also delete corresponding markdown file
+        markdown_root = Path(__file__).parent / "public" / "backend" / "markdowns"
+        md_path = markdown_root / safe_id / f"{os.path.splitext(safe_file)[0]}.md"
+        if md_path.exists():
+            md_path.unlink()
+            logger.info(f"[/delete_doc] Deleted Markdown: {md_path}")
+
+        # Remove from docs_status
+        docs_status = _read_docs_status(kb_dir)
+        docs_status.pop(safe_file, None)
+        _write_docs_status(kb_dir, docs_status)
+
+        return {"status": "success", "message": f"Document '{safe_file}' deleted"}
+    except Exception as e:
+        logger.error(f"[/delete_doc] Error: {e}", exc_info=True)
+        return {"status": "error", "message": str(e)}
+
+
+# ============================================================================
+# CHAT HISTORY READ ENDPOINTS
+# ============================================================================
+
+@app.get("/list_chats")
+async def list_chats():
+    """
+    List all saved conversations (metadata only, not full messages).
+    Reads each *.json file in CHAT_HISTORY_DIR and returns the meta block.
+    """
+    try:
+        chats = []
+        for chat_file in sorted(CHAT_HISTORY_DIR.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True):
+            try:
+                with chat_file.open("r", encoding="utf-8") as f:
+                    data = json.load(f)
+                meta = data.get("meta", {})
+                messages = data.get("messages", [])
+                # Build a lightweight preview
+                last_user_msg = next(
+                    (m["content"] for m in reversed(messages) if m.get("role") == "user"), ""
+                )
+                chats.append({
+                    "id": data.get("conversation_id", chat_file.stem),
+                    "title": meta.get("title", "Untitled"),
+                    "preview": last_user_msg[:120],
+                    "message_count": len(messages),
+                    "kb_id": meta.get("kbId", ""),
+                    "kb_name": meta.get("kbName", ""),
+                    "updated_at": meta.get("updatedAt", ""),
+                    "status": meta.get("status", "active"),
+                })
+            except Exception as parse_err:
+                logger.warning(f"[/list_chats] Could not parse {chat_file.name}: {parse_err}")
+
+        return {"status": "success", "conversations": chats}
+    except Exception as e:
+        logger.error(f"[/list_chats] Error: {e}", exc_info=True)
+        return {"status": "error", "message": str(e)}
+
+
+@app.get("/get_chat/{conversation_id}")
+async def get_chat(conversation_id: str):
+    """Retrieve the full message history for a specific conversation."""
+    try:
+        safe_id = _safe_name(conversation_id)
+        chat_file = CHAT_HISTORY_DIR / f"{safe_id}.json"
+
+        if not chat_file.exists():
+            return {"status": "error", "message": f"Conversation '{conversation_id}' not found"}
+
+        with chat_file.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        return {"status": "success", **data}
+    except Exception as e:
+        logger.error(f"[/get_chat] Error: {e}", exc_info=True)
         return {"status": "error", "message": str(e)}
 
 

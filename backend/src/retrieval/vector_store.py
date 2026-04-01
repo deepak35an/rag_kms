@@ -204,13 +204,18 @@ class VectorStore:
             logger.error(f"Similarity search failed: {e}", exc_info=True)
             return []
 
-    def scroll_all(self, batch_size: int = 100) -> List[Dict[str, Any]]:
+    def scroll_all(self, batch_size: int = 100, kb_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """
-        Retrieve ALL documents from Qdrant using scroll.
-        Used for building BM25 index on startup.
+        Retrieve ALL documents (or filtered by kb_id) from Qdrant using scroll.
+        Used for building BM25 index on startup or per-KB index.
         """
         all_docs = []
         next_offset = None
+
+        # Build filter if kb_id is provided
+        scroll_filter = None
+        if kb_id:
+            scroll_filter = Filter(must=[FieldCondition(key="kb_id", match=MatchValue(value=kb_id))])
         
         try:
             while True:
@@ -219,7 +224,8 @@ class VectorStore:
                     limit=batch_size,
                     offset=next_offset,
                     with_payload=True,
-                    with_vectors=False
+                    with_vectors=False,
+                    scroll_filter=scroll_filter
                 )
                 
                 for res in results:

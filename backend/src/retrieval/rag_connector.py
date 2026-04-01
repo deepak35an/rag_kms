@@ -35,7 +35,8 @@ class RAGConnector:
         self.semantic_cache = {}
         self.cache_threshold = 0.85
         self.cross_encoder = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
-        self.bm25_retriever = None
+        self.bm25_retriever = None          # Global BM25 index (all docs)
+        self.bm25_indexes: Dict[str, Any] = {}  # Per-KB BM25 indexes keyed by kb_id
 
     # ... _initialize_llm kept as is ... (omitted in replacement if not targeted, but I will include it to be safe)
     def _initialize_llm(self):
@@ -60,47 +61,70 @@ class RAGConnector:
             logger.error("FATAL: langchain-ollama is not installed. LLM features will be disabled.")
             return None
 
-    async def initialize_hybrid_retrieval(self):
-        """Build BM25 index from all documents in vector store."""
-        logger.info("Initializing hybrid retrieval (BM25 index build)...")
-        try:
-            # Scroll all docs from Qdrant
-            corpus = self.vectorstore.scroll_all()
-            if not corpus:
-                logger.warning("Empty corpus retrieved from Qdrant. BM25 will not be available.")
-                return
-            
-            # Initialize BM25 retriever
-            self.bm25_retriever = BM25Retriever(corpus)
-            logger.info(f"Hybrid retrieval initialized with {len(corpus)} documents.")
-        except Exception as e:
-            logger.error(f"Failed to initialize hybrid retrieval: {e}")
+    async def initialize_hybrid_retrieval(self, kb_id: Optional[str] = None):
+        """
+        Build BM25 index from documents in Qdrant.
 
-    def _get_retriever_lambda(self):
-        """Returns a runnable lambda that performs hybrid search."""
-        return RunnableLambda(lambda q: self.hybrid_similarity_search(q, k=10))
+        Args:
+            kb_id: If provided, build a per-KB index for that knowledge base only.
+                   If None, build the global index from all documents.
+        """
+        if kb_id:
+            logger.info(f"Building per-KB BM25 index for kb_id='{kb_id}'...")
+            try:
+                corpus = self.vectorstore.scroll_all(kb_id=kb_id)
+                if not corpus:
+                    logger.warning(f"No documents found for kb_id='{kb_id}'. Skipping per-KB BM25.")
+                    return
+                self.bm25_indexes[kb_id] = BM25Retriever(corpus)
+                logger.info(f"Per-KB BM25 built for '{kb_id}' with {len(corpus)} chunks.")
+            except Exception as e:
+                logger.error(f"Failed to build per-KB BM25 for '{kb_id}': {e}")
+        else:
+            logger.info("Building global BM25 index (all documents)...")
+            try:
+                corpus = self.vectorstore.scroll_all()
+                if not corpus:
+                    logger.warning("Empty corpus — BM25 will not be available.")
+                    return
+                self.bm25_retriever = BM25Retriever(corpus)
+                logger.info(f"Global BM25 initialized with {len(corpus)} documents.")
+            except Exception as e:
+                logger.error(f"Failed to initialize global BM25: {e}")
 
-    async def hybrid_similarity_search(self, query: str, k: int = 10) -> List[Document]:
+    def _get_retriever_lambda(self, kb_id: Optional[str] = None):
+        """Returns a runnable lambda that performs KB-scoped hybrid search."""
+        return RunnableLambda(lambda q: self.hybrid_similarity_search(q, k=10, kb_id=kb_id))
+
+    async def hybrid_similarity_search(
+        self, query: str, k: int = 10, kb_id: Optional[str] = None
+    ) -> List[Document]:
         """
         Execute Hybrid Retrieval Pipeline:
-        1. Dense retrieval (25 chunks)
-        2. BM25 retrieval (25 chunks)
+        1. Dense retrieval (25 chunks) — filtered to kb_id if provided
+        2. BM25 retrieval (25 chunks)  — uses per-KB index if available
         3. Fusion (Weighted Min-Max) -> Top 20
         4. Cross-encoder rerank top 15 -> Top 10
         """
-        logger.info(f"Starting hybrid similarity search for: {query[:50]}...")
-        
+        logger.info(
+            f"Starting hybrid search [kb_id={kb_id or 'global'}] for: {query[:50]}..."
+        )
+
         # Stage 1: Parallel Execution
         dense_fetch = 25
         bm25_fetch = 25
+
+        # Dense task — pass kb_id as Qdrant filter so only that KB's vectors are searched
+        dense_filter = {"kb_id": kb_id} if kb_id else None
+        dense_task = self.vectorstore.similarity_search(query, k=dense_fetch, filter=dense_filter)
         
-        # Dense task
-        dense_task = self.vectorstore.similarity_search(query, k=dense_fetch)
-        
-        # BM25 task
-        if self.bm25_retriever:
-            bm25_task = self.bm25_retriever.retrieve(query, bm25_fetch)
-            
+        # BM25 task — prefer per-KB index, fall back to global
+        bm25_retriever = (
+            self.bm25_indexes.get(kb_id) if kb_id else None
+        ) or self.bm25_retriever
+
+        if bm25_retriever:
+            bm25_task = bm25_retriever.retrieve(query, bm25_fetch)
             # Run in parallel
             dense_docs, (bm25_ids, bm25_scores) = await asyncio.gather(dense_task, bm25_task)
         else:
@@ -268,12 +292,12 @@ class RAGConnector:
         
         return sorted(score_dict.items(), key=lambda x: x[1], reverse=True)
 
-    def _setup_rag_chain(self, query: Optional[str] = None):
-        """Set up the RAG chain using LCEL."""
+    def _setup_rag_chain(self, query: Optional[str] = None, kb_id: Optional[str] = None):
+        """Set up the RAG chain using LCEL with grounding in a specific KB."""
         
         # 1. Contextualize Question (History Aware)
         contextualize_q_system_prompt = (
-            "Given a chat history and the latest user question about JAC Chandigarh, "
+            "Given a chat history and the latest user question, "
             "formulate a standalone question which can be understood without the chat history. "
             "Do NOT answer the question, just reformulate it if needed and otherwise return it as is."
         )
@@ -313,7 +337,7 @@ class RAGConnector:
         # 3. Add context (List[Documents])
         # 4. Add answer (String)
         async def retrieve_docs_async(x):
-            return await self.hybrid_similarity_search(x["standalone_question"], k=10)
+            return await self.hybrid_similarity_search(x["standalone_question"], k=10, kb_id=kb_id)
 
         # Chain that preserves context for the final output
         full_chain = (
@@ -362,10 +386,80 @@ Your goal is to provide precise, well-structured answers based ONLY on the provi
 ========================
 """
 
-    def get_chain(self, query: Optional[str]):
-        """Get or initialize the RAG chain."""
-        if self.rag_chain is None or query:
-            self.rag_chain = self._setup_rag_chain(query)
+    def get_chain(self, query: Optional[str], kb_id: Optional[str] = None):
+        """Get or initialize the RAG chain, scoped to kb_id if provided."""
+        # Always rebuild chain so the kb_id filter is applied correctly per request
+        self.rag_chain = self._setup_rag_chain(query, kb_id=kb_id)
+        return self.rag_chain
+
+    async def get_standalone_question(self, question: str, session_id: str) -> str:
+        """Contextualize user question based on chat history."""
+        session_history = self.session_manager.get_session_history(session_id)
+        
+        # Re-use prompt from _setup_rag_chain
+        system_prompt = (
+            "Given a chat history and the latest user question, "
+            "formulate a standalone question which can be understood without the chat history. "
+            "Do NOT answer the question, just reformulate it if needed and otherwise return it as is."
+        )
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", system_prompt),
+            MessagesPlaceholder(variable_name="chat_history"),
+            ("human", "{input}"),
+        ])
+        
+        chain = prompt | self.llm | StrOutputParser()
+        standalone = await chain.ainvoke({
+            "input": question,
+            "chat_history": session_history.messages
+        })
+        return standalone
+
+    async def generate_from_context(self, question: str, context: str, session_id: str) -> str:
+        """Generate final answer from manual context and user question."""
+        session_history = self.session_manager.get_session_history(session_id)
+        
+        qa_system_prompt = self._get_system_prompt()
+        qa_prompt = ChatPromptTemplate.from_messages([
+            ("system", qa_system_prompt),
+            MessagesPlaceholder(variable_name="chat_history"),
+            ("human", "{input}"),
+        ])
+        
+        # Build the grounding chain
+        chain = (
+            RunnablePassthrough.assign(context=lambda x: context)
+            | qa_prompt
+            | self.llm
+            | StrOutputParser()
+        )
+        
+        response = await chain.ainvoke({
+            "input": question,
+            "chat_history": session_history.messages
+        })
+        return response
+
+    def _format_docs_for_selection(self, docs: List[Document]) -> List[Dict[str, Any]]:
+        """Format documents for frontend selection with extra metadata."""
+        formatted = []
+        for i, doc in enumerate(docs):
+            formatted.append({
+                "id": f"chunk_{i}",
+                "content": doc.page_content,
+                "metadata": {
+                    "source": doc.metadata.get("source", "Unknown"),
+                    "page": doc.metadata.get("page", "?"),
+                    "relevance_score": round(doc.metadata.get("relevance_score", 0.0), 3),
+                    "kb_id": doc.metadata.get("kb_id", "global")
+                }
+            })
+        return formatted
+
+    def get_chain(self, query: Optional[str], kb_id: Optional[str] = None):
+        """Get or initialize the RAG chain, scoped to kb_id if provided."""
+        # Always rebuild chain so the kb_id filter is applied correctly per request
+        self.rag_chain = self._setup_rag_chain(query, kb_id=kb_id)
         return self.rag_chain
 
     def _find_similar_cached_query(self, query: str):
