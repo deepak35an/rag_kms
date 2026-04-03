@@ -228,7 +228,7 @@ export default function ChatPage() {
   };
 
   const handleSend = async () => {
-    if (!inputValue.trim() || !selectedKB || !currentConversationId) return;
+    if (isLoading || !inputValue.trim() || !selectedKB || !currentConversationId) return;
 
     setErrorText("");
     const question = inputValue.trim();
@@ -464,9 +464,13 @@ export default function ChatPage() {
               type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSend()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !isLoading) {
+                  handleSend();
+                }
+              }}
               placeholder="Ask a question about your documents..."
-              disabled={!selectedKB || isLoading}
+              disabled={!selectedKB}
               className="flex-1 px-5 py-3 bg-transparent text-lg focus:outline-none disabled:cursor-not-allowed text-gray-900 placeholder-gray-500"
             />
             <button
