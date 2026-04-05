@@ -85,6 +85,47 @@ export interface GetChatResponse {
   message?: string;
 }
 
+// Decoupled RAG flow: retrieve -> generate
+export interface ChunkMetadata {
+  source: string;
+  page: number | string;
+  relevance_score: number;
+  kb_id: string;
+  [key: string]: unknown;
+}
+
+export interface ChunkInfo {
+  id: string;
+  content: string;
+  metadata: ChunkMetadata;
+}
+
+export interface RetrieveRequest {
+  question: string;
+  session_id: string;
+  kb_id: string;
+}
+
+export interface RetrieveResponse {
+  session_id: string;
+  original_question: string;
+  standalone_question: string;
+  chunks: ChunkInfo[];
+}
+
+export interface GenerateRequest {
+  question: string;
+  session_id: string;
+  selected_chunks: Array<Pick<ChunkInfo, "content" | "metadata">>;
+}
+
+export interface GenerateResponse {
+  session_id: string;
+  question: string;
+  answer: string;
+  sources: string[];
+}
+
 export interface UploadedFileInfo {
   filename: string;
   original_filename: string;
