@@ -19,6 +19,72 @@ export interface AskResponse {
   error?: string;
 }
 
+// Knowledge Base
+export interface KBInfo {
+  id: string;
+  name: string;
+  description: string;
+  doc_count: number;
+  created_at: string;
+}
+
+export interface ListKBsResponse {
+  status: "success" | "error";
+  knowledge_bases?: KBInfo[];
+  message?: string;
+}
+
+export interface CreateKBResponse {
+  status: "success" | "error";
+  id?: string;
+  name?: string;
+  description?: string;
+  created_at?: string;
+  message?: string;
+}
+
+// Documents
+export interface DocInfo {
+  filename: string;
+  size_bytes: number;
+  ingest_status: string;
+  chunks_created: number;
+  uploaded_at: string;
+}
+
+export interface ListDocsResponse {
+  status: "success" | "error";
+  kb_id?: string;
+  documents?: DocInfo[];
+  message?: string;
+}
+
+// Chat History
+export interface ChatSummary {
+  id: string;
+  title: string;
+  preview: string;
+  message_count: number;
+  kb_id: string;
+  kb_name: string;
+  updated_at: string;
+  status: string;
+}
+
+export interface ListChatsResponse {
+  status: "success" | "error";
+  conversations?: ChatSummary[];
+  message?: string;
+}
+
+export interface GetChatResponse {
+  status: "success" | "error";
+  conversation_id?: string;
+  meta?: Record<string, unknown>;
+  messages?: Record<string, unknown>[];
+  message?: string;
+}
+
 export interface UploadedFileInfo {
   filename: string;
   original_filename: string;
