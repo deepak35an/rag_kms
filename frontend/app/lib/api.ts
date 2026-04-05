@@ -110,6 +110,11 @@ export interface IngestResponse {
   message?: string;
 }
 
+export interface OperationResponse {
+  status: "success" | "error";
+  message?: string;
+}
+
 // --- API Functions ---
 
 export async function checkHealth(): Promise<HealthResponse> {
@@ -137,6 +142,70 @@ export async function askQuestion(
     body: JSON.stringify({ question, session_id: sessionId }),
   });
   if (!res.ok) throw new Error("Failed to get answer");
+  return res.json();
+}
+
+export async function listKBs(): Promise<ListKBsResponse> {
+  const res = await fetch(`${API_BASE}/list_kbs`);
+  if (!res.ok) throw new Error("Failed to list knowledge bases");
+  return res.json();
+}
+
+export async function createKB(
+  id: string,
+  name: string,
+  description = ""
+): Promise<CreateKBResponse> {
+  const res = await fetch(`${API_BASE}/create_kb`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id, name, description }),
+  });
+  if (!res.ok) throw new Error("Failed to create knowledge base");
+  return res.json();
+}
+
+export async function deleteKB(kbId: string): Promise<OperationResponse> {
+  const safeKbId = encodeURIComponent(kbId);
+  const res = await fetch(`${API_BASE}/delete_kb/${safeKbId}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) throw new Error("Failed to delete knowledge base");
+  return res.json();
+}
+
+export async function listDocs(kbId: string): Promise<ListDocsResponse> {
+  const safeKbId = encodeURIComponent(kbId);
+  const res = await fetch(`${API_BASE}/list_docs/${safeKbId}`);
+  if (!res.ok) throw new Error("Failed to list documents");
+  return res.json();
+}
+
+export async function deleteDoc(
+  kbId: string,
+  filename: string
+): Promise<OperationResponse> {
+  const safeKbId = encodeURIComponent(kbId);
+  const safeFilename = encodeURIComponent(filename);
+  const res = await fetch(`${API_BASE}/delete_doc/${safeKbId}/${safeFilename}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) throw new Error("Failed to delete document");
+  return res.json();
+}
+
+export async function listChats(): Promise<ListChatsResponse> {
+  const res = await fetch(`${API_BASE}/list_chats`);
+  if (!res.ok) throw new Error("Failed to list chats");
+  return res.json();
+}
+
+export async function getChat(
+  conversationId: string
+): Promise<GetChatResponse> {
+  const safeConversationId = encodeURIComponent(conversationId);
+  const res = await fetch(`${API_BASE}/get_chat/${safeConversationId}`);
+  if (!res.ok) throw new Error("Failed to fetch chat");
   return res.json();
 }
 
