@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { uploadDocuments, ingestDocuments } from "@/app/lib/api";
+import { useEffect, useState, useRef } from "react";
+import { uploadDocuments, ingestDocuments, listKBs } from "@/app/lib/api";
 
 interface KnowledgeBase {
   id: string;
@@ -139,6 +139,50 @@ export default function KnowledgeBasePage() {
     setToast({ message, type });
     window.setTimeout(() => setToast(null), 2400);
   };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadKnowledgeBases = async () => {
+      try {
+        const response = await listKBs();
+
+        if (response.status !== "success") {
+          throw new Error(response.message || "Failed to load knowledge bases");
+        }
+
+        const serverKBs: KnowledgeBase[] = (response.knowledge_bases ?? []).map((kb) => ({
+          id: kb.id,
+          name: kb.name,
+          description: kb.description || "",
+          docCount: kb.doc_count ?? 0,
+          updatedAt: kb.created_at?.split("T")[0] || new Date().toISOString().split("T")[0],
+        }));
+
+        if (cancelled) return;
+
+        setKnowledgeBases(serverKBs);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(serverKBs));
+
+        setSelectedId((prev) => {
+          if (prev && serverKBs.some((kb) => kb.id === prev)) return prev;
+          return serverKBs[0]?.id ?? null;
+        });
+      } catch (error) {
+        if (cancelled) return;
+        showToast(
+          error instanceof Error ? error.message : "Failed to load knowledge bases",
+          "error"
+        );
+      }
+    };
+
+    void loadKnowledgeBases();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleDelete = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
