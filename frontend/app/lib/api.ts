@@ -13,6 +13,8 @@ export interface SessionResponse {
 }
 
 export interface AskResponse {
+  session_id?: string;
+  question?: string;
   answer: string;
   sources: string[];
   retrieved_chunks?: { content: string; score: number }[];
@@ -173,14 +175,24 @@ export async function createSession(): Promise<SessionResponse> {
   return res.json();
 }
 
+/**
+ * @deprecated Use retrieveChunks() and generateAnswer() for the two-step flow.
+ */
 export async function askQuestion(
   question: string,
-  sessionId: string
+  sessionId: string,
+  kbId?: string
 ): Promise<AskResponse> {
+  const payload = {
+    question,
+    session_id: sessionId,
+    ...(kbId ? { kb_id: kbId } : {}),
+  };
+
   const res = await fetch(`${API_BASE}/ask`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ question, session_id: sessionId }),
+    body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error("Failed to get answer");
   return res.json();
@@ -247,6 +259,48 @@ export async function getChat(
   const safeConversationId = encodeURIComponent(conversationId);
   const res = await fetch(`${API_BASE}/get_chat/${safeConversationId}`);
   if (!res.ok) throw new Error("Failed to fetch chat");
+  return res.json();
+}
+
+export async function retrieveChunks(
+  question: string,
+  sessionId: string,
+  kbId: string
+): Promise<RetrieveResponse> {
+  const payload: RetrieveRequest = {
+    question,
+    session_id: sessionId,
+    kb_id: kbId,
+  };
+
+  const res = await fetch(`${API_BASE}/retrieve`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) throw new Error("Failed to retrieve chunks");
+  return res.json();
+}
+
+export async function generateAnswer(
+  question: string,
+  sessionId: string,
+  selectedChunks: GenerateRequest["selected_chunks"]
+): Promise<GenerateResponse> {
+  const payload: GenerateRequest = {
+    question,
+    session_id: sessionId,
+    selected_chunks: selectedChunks,
+  };
+
+  const res = await fetch(`${API_BASE}/generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) throw new Error("Failed to generate answer");
   return res.json();
 }
 
