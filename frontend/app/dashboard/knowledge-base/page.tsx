@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { uploadDocuments, ingestDocuments, listKBs } from "@/app/lib/api";
+import {
+  uploadDocuments,
+  ingestDocuments,
+  listKBs,
+  createKB,
+  deleteKB,
+} from "@/app/lib/api";
 
 interface KnowledgeBase {
   id: string;
@@ -184,40 +190,69 @@ export default function KnowledgeBasePage() {
     };
   }, []);
 
-  const handleDelete = (id: string, e: React.MouseEvent) => {
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const updated = knowledgeBases.filter((kb) => kb.id !== id);
-    setKnowledgeBases(updated);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
 
-    const updatedDocs = documents.filter((doc) => doc.kbId !== id);
-    setDocuments(updatedDocs);
-    localStorage.setItem(DOCS_STORAGE_KEY, JSON.stringify(updatedDocs));
+    try {
+      const response = await deleteKB(id);
+      if (response.status !== "success") {
+        throw new Error(response.message || "Failed to delete knowledge base");
+      }
 
-    if (selectedId === id) setSelectedId(updated[0]?.id ?? null);
-    showToast("Knowledge base deleted");
+      const updated = knowledgeBases.filter((kb) => kb.id !== id);
+      setKnowledgeBases(updated);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+
+      const updatedDocs = documents.filter((doc) => doc.kbId !== id);
+      setDocuments(updatedDocs);
+      localStorage.setItem(DOCS_STORAGE_KEY, JSON.stringify(updatedDocs));
+
+      if (selectedId === id) setSelectedId(updated[0]?.id ?? null);
+      showToast("Knowledge base deleted");
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : "Failed to delete knowledge base",
+        "error"
+      );
+    }
   };
 
-  const handleCreateKB = () => {
+  const handleCreateKB = async () => {
     if (!newKBName.trim()) return;
-    
-    const newKB: KnowledgeBase = {
-      id: `kb-${Date.now()}`,
-      name: newKBName.trim(),
-      description: newKBDesc.trim(),
-      docCount: 0,
-      updatedAt: new Date().toISOString().split("T")[0],
-    };
-    const updated = [...knowledgeBases, newKB];
-    setKnowledgeBases(updated);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    setSelectedId(newKB.id);
-    
-    // Reset modal
-    setShowCreateModal(false);
-    setNewKBName("");
-    setNewKBDesc("");
-    showToast("Knowledge base created");
+
+    const tempId = `kb-${Date.now()}`;
+
+    try {
+      const response = await createKB(tempId, newKBName.trim(), newKBDesc.trim());
+
+      if (response.status !== "success" || !response.id) {
+        throw new Error(response.message || "Failed to create knowledge base");
+      }
+
+      const newKB: KnowledgeBase = {
+        id: response.id,
+        name: response.name || newKBName.trim(),
+        description: response.description || newKBDesc.trim(),
+        docCount: 0,
+        updatedAt: response.created_at?.split("T")[0] || new Date().toISOString().split("T")[0],
+      };
+
+      const updated = [...knowledgeBases, newKB];
+      setKnowledgeBases(updated);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      setSelectedId(newKB.id);
+
+      // Reset modal
+      setShowCreateModal(false);
+      setNewKBName("");
+      setNewKBDesc("");
+      showToast("Knowledge base created");
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : "Failed to create knowledge base",
+        "error"
+      );
+    }
   };
 
   const handleFileUpload = async (files: FileList | null) => {
