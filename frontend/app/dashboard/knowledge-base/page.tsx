@@ -5,6 +5,7 @@ import {
   uploadDocuments,
   ingestDocuments,
   listKBs,
+  listDocs,
   createKB,
   deleteKB,
 } from "@/app/lib/api";
@@ -189,6 +190,58 @@ export default function KnowledgeBasePage() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!selectedId) return;
+
+    let cancelled = false;
+
+    const loadDocumentsForKb = async () => {
+      try {
+        const response = await listDocs(selectedId);
+        if (response.status !== "success") {
+          throw new Error(response.message || "Failed to load documents");
+        }
+
+        const serverDocs: Document[] = (response.documents ?? []).map((doc, index) => ({
+          id: `${selectedId}-${doc.filename}-${index}`,
+          name: doc.filename,
+          uploadDate: doc.uploaded_at?.split("T")[0] || "-",
+          size: `${(doc.size_bytes / 1024 / 1024).toFixed(1)} MB`,
+          status: doc.ingest_status === "failed" ? "failed" : "processing",
+          kbId: selectedId,
+        }));
+
+        if (cancelled) return;
+
+        setDocuments((prev) => {
+          const merged = [...prev.filter((doc) => doc.kbId !== selectedId), ...serverDocs];
+          localStorage.setItem(DOCS_STORAGE_KEY, JSON.stringify(merged));
+          return merged;
+        });
+
+        setKnowledgeBases((prev) => {
+          const updated = prev.map((kb) =>
+            kb.id === selectedId ? { ...kb, docCount: serverDocs.length } : kb
+          );
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+          return updated;
+        });
+      } catch (error) {
+        if (cancelled) return;
+        showToast(
+          error instanceof Error ? error.message : "Failed to load documents",
+          "error"
+        );
+      }
+    };
+
+    void loadDocumentsForKb();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedId]);
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
