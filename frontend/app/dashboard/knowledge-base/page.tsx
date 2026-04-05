@@ -8,6 +8,7 @@ import {
   listDocs,
   createKB,
   deleteKB,
+  deleteDoc,
 } from "@/app/lib/api";
 
 interface KnowledgeBase {
@@ -114,6 +115,12 @@ function bootstrapKnowledgeBaseState() {
   };
 }
 
+function mapIngestStatusToUiStatus(status?: string): Document["status"] {
+  if (status === "ingested") return "processed";
+  if (status === "failed") return "failed";
+  return "processing";
+}
+
 export default function KnowledgeBasePage() {
   const [boot] = useState(() => {
     if (typeof window === "undefined") {
@@ -208,7 +215,7 @@ export default function KnowledgeBasePage() {
           name: doc.filename,
           uploadDate: doc.uploaded_at?.split("T")[0] || "-",
           size: `${(doc.size_bytes / 1024 / 1024).toFixed(1)} MB`,
-          status: doc.ingest_status === "failed" ? "failed" : "processing",
+          status: mapIngestStatusToUiStatus(doc.ingest_status),
           kbId: selectedId,
         }));
 
@@ -406,21 +413,33 @@ export default function KnowledgeBasePage() {
     }
   };
 
-  const handleDeleteDoc = (docId: string) => {
+  const handleDeleteDoc = async (docId: string) => {
     const doc = documents.find((d) => d.id === docId);
     if (!doc) return;
 
-    const updatedDocs = documents.filter((d) => d.id !== docId);
-    setDocuments(updatedDocs);
-    localStorage.setItem(DOCS_STORAGE_KEY, JSON.stringify(updatedDocs));
+    try {
+      const response = await deleteDoc(doc.kbId, doc.name);
+      if (response.status !== "success") {
+        throw new Error(response.message || "Failed to delete document");
+      }
 
-    // Update doc count in KB
-    const updatedKBs = knowledgeBases.map((kb) =>
-      kb.id === doc.kbId ? { ...kb, docCount: Math.max(0, kb.docCount - 1) } : kb
-    );
-    setKnowledgeBases(updatedKBs);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedKBs));
-    showToast("Document deleted");
+      const updatedDocs = documents.filter((d) => d.id !== docId);
+      setDocuments(updatedDocs);
+      localStorage.setItem(DOCS_STORAGE_KEY, JSON.stringify(updatedDocs));
+
+      // Update doc count in KB
+      const updatedKBs = knowledgeBases.map((kb) =>
+        kb.id === doc.kbId ? { ...kb, docCount: Math.max(0, kb.docCount - 1) } : kb
+      );
+      setKnowledgeBases(updatedKBs);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedKBs));
+      showToast("Document deleted");
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : "Failed to delete document",
+        "error"
+      );
+    }
   };
 
   const handleDragOver = (e: React.DragEvent) => {
