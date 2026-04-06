@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   createSession,
+  generateAnswer,
   retrieveChunks,
   listKBs,
   saveChatHistory,
@@ -427,6 +428,82 @@ export default function ChatPage() {
     }
   };
 
+  const handleGenerateFromSelection = async () => {
+    if (
+      !pendingQuestion ||
+      !pendingSessionId ||
+      !currentConversationId ||
+      selectedChunkIds.length === 0 ||
+      isGenerating
+    ) {
+      return;
+    }
+
+    setErrorText("");
+    setIsGenerating(true);
+
+    try {
+      const selectedChunks = candidateChunks
+        .filter((chunk) => selectedChunkIds.includes(chunk.id))
+        .map((chunk) => ({
+          content: chunk.content,
+          metadata: chunk.metadata,
+        }));
+
+      const response = await generateAnswer(
+        pendingQuestion,
+        pendingSessionId,
+        selectedChunks
+      );
+
+      const sourceText = response.sources?.length
+        ? `\n\nSources:\n${response.sources.map((s) => `• ${s}`).join("\n")}`
+        : "";
+
+      const assistantMsg: Message = {
+        id: `msg-${Date.now()}-ai`,
+        role: "assistant",
+        content: `${response.answer || "No answer returned."}${sourceText}`,
+        timestamp: timeString(),
+      };
+
+      const finalMessages = [...messages, assistantMsg];
+      persistMessages(currentConversationId, finalMessages);
+
+      const kbName = knowledgeBases.find((kb) => kb.id === selectedKB)?.name || "";
+      updateConversationMeta(
+        currentConversationId,
+        (conv) => ({
+          ...conv,
+          kbId: selectedKB,
+          kbName,
+          title:
+            conv.title === "New Conversation"
+              ? pendingQuestion.slice(0, 48)
+              : conv.title,
+          preview: pendingQuestion,
+          messageCount: finalMessages.length,
+          status: "active",
+          updatedAt: nowIso(),
+        }),
+        finalMessages
+      );
+
+      setCandidateChunks([]);
+      setSelectedChunkIds([]);
+      setPendingQuestion("");
+      setPendingSessionId("");
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to generate answer from selected chunks.";
+      setErrorText(message);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full w-full max-w-7xl mx-auto">
       <div className="mb-6 flex items-center justify-between gap-3">
@@ -562,6 +639,20 @@ export default function ChatPage() {
                     </label>
                   );
                 })}
+              </div>
+
+              <div className="mt-3 flex items-center justify-end">
+                <button
+                  onClick={handleGenerateFromSelection}
+                  disabled={selectedChunkIds.length === 0 || isGenerating}
+                  className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                >
+                  {isGenerating
+                    ? "Generating answer..."
+                    : `Generate answer from ${selectedChunkIds.length} selected chunk${
+                        selectedChunkIds.length === 1 ? "" : "s"
+                      }`}
+                </button>
               </div>
             </div>
           )}
