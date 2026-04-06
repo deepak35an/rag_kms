@@ -175,6 +175,8 @@ export default function ChatPage() {
     setSelectedChunkIds([]);
   };
 
+  const isBusy = isLoading || isRetrieving || isGenerating;
+
   // Load from localStorage after hydration completes
   useEffect(() => {
     if (hydrationDoneRef.current) return;
@@ -699,7 +701,7 @@ export default function ChatPage() {
                 >
                   {isGenerating
                     ? "Generating answer..."
-                    : `Generate answer from ${selectedChunkIds.length} selected chunk${
+                    : `Generate answer (${selectedChunkIds.length} chunk${
                         selectedChunkIds.length === 1 ? "" : "s"
                       }`}
                 </button>
@@ -741,22 +743,25 @@ export default function ChatPage() {
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && !isLoading && !isRetrieving && !isGenerating) {
+                if (e.key === "Enter" && !isBusy) {
                   handleSend();
                 }
               }}
-              placeholder="Ask a question about your documents..."
+              placeholder="Ask a question to retrieve candidate chunks..."
               disabled={!selectedKB}
               className="flex-1 px-5 py-3 bg-transparent text-lg focus:outline-none disabled:cursor-not-allowed text-gray-900 placeholder-gray-500"
             />
             <button
               onClick={handleSend}
-              disabled={!inputValue.trim() || !selectedKB || isLoading || isRetrieving || isGenerating}
-              className="p-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
+              disabled={!inputValue.trim() || !selectedKB || isBusy}
+              className="inline-flex items-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
               </svg>
+              <span className="text-sm font-medium">
+                {isRetrieving ? "Retrieving..." : "Retrieve chunks"}
+              </span>
             </button>
           </div>
         </div>
