@@ -767,6 +767,31 @@ async def get_chat(conversation_id: str):
         return {"status": "error", "message": str(e)}
 
 
+@app.delete("/delete_chat/{conversation_id}")
+async def delete_chat(conversation_id: str):
+    """Delete a saved conversation JSON file from backend storage."""
+    try:
+        safe_id = _safe_name(conversation_id)
+        chat_file = CHAT_HISTORY_DIR / f"{safe_id}.json"
+
+        if not chat_file.exists():
+            # Idempotent delete: treat already-absent as success.
+            return {
+                "status": "success",
+                "message": f"Conversation '{conversation_id}' already deleted",
+            }
+
+        chat_file.unlink()
+        logger.info(f"[/delete_chat] Deleted chat file: {chat_file}")
+        return {
+            "status": "success",
+            "message": f"Conversation '{conversation_id}' deleted",
+        }
+    except Exception as e:
+        logger.error(f"[/delete_chat] Error: {e}", exc_info=True)
+        return {"status": "error", "message": str(e)}
+
+
 # ============================================================================
 # VIDORE EVALUATION ENDPOINT (ISOLATED FROM PRODUCTION)
 # ============================================================================
