@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { listChats } from "@/app/lib/api";
+import { getChat, listChats } from "@/app/lib/api";
 
 interface Conversation {
   id: string;
@@ -84,6 +84,33 @@ function mergeConversationsWithServerPriority(
   return Array.from(merged.values());
 }
 
+function normalizeChatMessages(messages: Record<string, unknown>[]) {
+  return messages
+    .map((msg, index) => {
+      const role = msg.role === "assistant" ? "assistant" : "user";
+      const content = typeof msg.content === "string" ? msg.content : "";
+      const timestamp =
+        typeof msg.timestamp === "string"
+          ? msg.timestamp
+          : new Date().toLocaleTimeString("en-US", {
+              hour: "2-digit",
+              minute: "2-digit",
+            });
+      const id =
+        typeof msg.id === "string"
+          ? msg.id
+          : `msg-${Date.now()}-${index}`;
+
+      return {
+        id,
+        role,
+        content,
+        timestamp,
+      };
+    })
+    .filter((msg) => msg.content.trim().length > 0);
+}
+
 export default function HistoryPage() {
   const [conversations, setConversations] = useState<Conversation[]>(() =>
     readConversations()
@@ -142,8 +169,27 @@ export default function HistoryPage() {
     }
   };
 
-  const openConversation = (id: string) => {
+  const openConversation = async (id: string) => {
     localStorage.setItem(ACTIVE_CONVERSATION_KEY, id);
+
+    const existingMessages = localStorage.getItem(`${MSG_PREFIX}${id}`);
+    if (!existingMessages) {
+      try {
+        const response = await getChat(id);
+        if (response.status === "success" && Array.isArray(response.messages)) {
+          const normalized = normalizeChatMessages(
+            response.messages as Record<string, unknown>[]
+          );
+          if (normalized.length > 0) {
+            localStorage.setItem(`${MSG_PREFIX}${id}`, JSON.stringify(normalized));
+          }
+        }
+      } catch {
+        // Continue to chat page even if backend fetch fails.
+      }
+    }
+
+    router.push("/dashboard/chat");
   };
 
   const filteredConversations = useMemo(() => {
@@ -242,8 +288,7 @@ export default function HistoryPage() {
             <div
               key={conv.id}
               onClick={() => {
-                openConversation(conv.id);
-                router.push("/dashboard/chat");
+                void openConversation(conv.id);
               }}
               className="bg-white rounded-2xl border border-gray-200 p-6 hover:shadow-md hover:border-blue-300 cursor-pointer transition-all flex items-start justify-between group"
             >
