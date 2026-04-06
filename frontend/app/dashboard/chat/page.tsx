@@ -167,6 +167,14 @@ export default function ChatPage() {
     );
   };
 
+  const selectAllChunks = () => {
+    setSelectedChunkIds(candidateChunks.map((chunk) => chunk.id));
+  };
+
+  const clearChunkSelection = () => {
+    setSelectedChunkIds([]);
+  };
+
   // Load from localStorage after hydration completes
   useEffect(() => {
     if (hydrationDoneRef.current) return;
@@ -610,38 +618,80 @@ export default function ChatPage() {
 
         <div className="p-6 border-t border-gray-100 bg-white">
           {candidateChunks.length > 0 && (
-            <div className="mb-4 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-sm text-blue-800">
-              <p className="font-medium">
-                {candidateChunks.length} candidate chunks ready · {selectedChunkIds.length} selected
-              </p>
-              {pendingQuestion && <p className="mt-1">Question: {pendingQuestion}</p>}
-              {pendingSessionId && <p className="mt-1">Session: {pendingSessionId}</p>}
+            <div className="mb-4 bg-white border border-blue-200 rounded-xl px-4 py-4 text-sm text-blue-900">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="font-semibold">
+                  Review retrieved chunks · {selectedChunkIds.length}/{candidateChunks.length} selected
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={selectAllChunks}
+                    className="px-2.5 py-1 rounded-md border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100"
+                  >
+                    Select all
+                  </button>
+                  <button
+                    type="button"
+                    onClick={clearChunkSelection}
+                    className="px-2.5 py-1 rounded-md border border-gray-200 text-gray-600 bg-white hover:bg-gray-50"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
 
-              <div className="mt-3 max-h-40 overflow-y-auto space-y-2">
+              {pendingQuestion && <p className="mt-1 text-xs text-blue-700">Question: {pendingQuestion}</p>}
+
+              <div className="mt-3 max-h-64 overflow-y-auto space-y-2.5 pr-1">
                 {candidateChunks.map((chunk) => {
                   const selected = selectedChunkIds.includes(chunk.id);
                   return (
                     <label
                       key={chunk.id}
-                      className="flex items-start gap-2 rounded-lg bg-white px-3 py-2 border border-blue-100 cursor-pointer"
+                      className={`block rounded-lg border p-3 cursor-pointer transition-colors ${
+                        selected
+                          ? "border-blue-500 bg-blue-50"
+                          : "border-gray-200 bg-white hover:border-blue-300"
+                      }`}
                     >
-                      <input
-                        type="checkbox"
-                        checked={selected}
-                        onChange={() => toggleChunkSelection(chunk.id)}
-                        className="mt-1"
-                      />
-                      <span className="text-xs text-blue-900 line-clamp-2">
-                        [{chunk.metadata?.source || "Unknown"} · p.{chunk.metadata?.page ?? "?"} · score {(
-                          chunk.metadata?.relevance_score ?? 0
-                        ).toFixed(3)}] {chunk.content}
-                      </span>
+                      <div className="flex items-start gap-3">
+                        <input
+                          type="checkbox"
+                          checked={selected}
+                          onChange={() => toggleChunkSelection(chunk.id)}
+                          className="mt-0.5"
+                        />
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2 text-[11px] text-blue-800">
+                            <span className="px-2 py-0.5 rounded-full bg-white border border-blue-200">
+                              {chunk.metadata?.source || "Unknown source"}
+                            </span>
+                            <span className="px-2 py-0.5 rounded-full bg-white border border-blue-200">
+                              Page {chunk.metadata?.page ?? "?"}
+                            </span>
+                            <span className="px-2 py-0.5 rounded-full bg-white border border-blue-200">
+                              Score {(chunk.metadata?.relevance_score ?? 0).toFixed(3)}
+                            </span>
+                          </div>
+
+                          <p className="mt-2 text-xs text-gray-800 line-clamp-3 leading-relaxed">
+                            {chunk.content}
+                          </p>
+                        </div>
+                      </div>
                     </label>
                   );
                 })}
               </div>
 
-              <div className="mt-3 flex items-center justify-end">
+              <div className="mt-3 flex items-center justify-between gap-2">
+                {pendingSessionId ? (
+                  <p className="text-xs text-gray-500 truncate">Session: {pendingSessionId}</p>
+                ) : (
+                  <span />
+                )}
                 <button
                   onClick={handleGenerateFromSelection}
                   disabled={selectedChunkIds.length === 0 || isGenerating}
