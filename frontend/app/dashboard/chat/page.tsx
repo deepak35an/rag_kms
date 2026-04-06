@@ -150,14 +150,19 @@ export default function ChatPage() {
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [errorText, setErrorText] = useState("");
+
   const [candidateChunks, setCandidateChunks] = useState<ChunkInfo[]>([]);
   const [selectedChunkIds, setSelectedChunkIds] = useState<string[]>([]);
+  const [isChunksPanelCollapsed, setIsChunksPanelCollapsed] = useState(false);
   const [pendingQuestion, setPendingQuestion] = useState("");
   const [pendingSessionId, setPendingSessionId] = useState("");
   const [isRetrieving, setIsRetrieving] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const hydrationDoneRef = useRef(false);
+
+  const isBusy = isLoading || isRetrieving || isGenerating;
 
   const toggleChunkSelection = (chunkId: string) => {
     setSelectedChunkIds((prev) =>
@@ -175,9 +180,6 @@ export default function ChatPage() {
     setSelectedChunkIds([]);
   };
 
-  const isBusy = isLoading || isRetrieving || isGenerating;
-
-  // Load from localStorage after hydration completes
   useEffect(() => {
     if (hydrationDoneRef.current) return;
     hydrationDoneRef.current = true;
@@ -251,6 +253,7 @@ export default function ChatPage() {
     setMessages(nextMessages);
     setCandidateChunks([]);
     setSelectedChunkIds([]);
+    setIsChunksPanelCollapsed(false);
     setPendingQuestion("");
     setPendingSessionId("");
     setIsRetrieving(false);
@@ -281,6 +284,7 @@ export default function ChatPage() {
     setMessages(nextMessages);
     setCandidateChunks([]);
     setSelectedChunkIds([]);
+    setIsChunksPanelCollapsed(false);
     setPendingQuestion("");
     setPendingSessionId("");
     setIsRetrieving(false);
@@ -339,25 +343,27 @@ export default function ChatPage() {
     setInputValue("");
     setCandidateChunks([]);
     setSelectedChunkIds([]);
+    setIsChunksPanelCollapsed(false);
     setPendingQuestion(question);
     setPendingSessionId("");
     setIsLoading(true);
     setIsRetrieving(true);
 
     const kbName = knowledgeBases.find((kb) => kb.id === selectedKB)?.name || "";
-    updateConversationMeta(currentConversationId, (conv) => ({
-      ...conv,
-      kbId: selectedKB,
-      kbName,
-      title:
-        conv.title === "New Conversation"
-          ? question.slice(0, 48)
-          : conv.title,
-      preview: question,
-      messageCount: afterUser.length,
-      status: "active",
-      updatedAt: nowIso(),
-    }), afterUser);
+    updateConversationMeta(
+      currentConversationId,
+      (conv) => ({
+        ...conv,
+        kbId: selectedKB,
+        kbName,
+        title: conv.title === "New Conversation" ? question.slice(0, 48) : conv.title,
+        preview: question,
+        messageCount: afterUser.length,
+        status: "active",
+        updatedAt: nowIso(),
+      }),
+      afterUser
+    );
 
     try {
       let sessionId = currentConversation?.sessionId;
@@ -397,10 +403,7 @@ export default function ChatPage() {
             ...conv,
             kbId: selectedKB,
             kbName,
-            title:
-              conv.title === "New Conversation"
-                ? question.slice(0, 48)
-                : conv.title,
+            title: conv.title === "New Conversation" ? question.slice(0, 48) : conv.title,
             preview: question,
             messageCount: finalMessages.length,
             status: "active",
@@ -411,12 +414,14 @@ export default function ChatPage() {
 
         setCandidateChunks([]);
         setSelectedChunkIds([]);
+        setIsChunksPanelCollapsed(false);
         setPendingQuestion("");
         setPendingSessionId("");
         return;
       }
 
       setCandidateChunks(sortedChunks);
+      setIsChunksPanelCollapsed(false);
 
       const defaultSelection = sortedChunks
         .filter((chunk) => (chunk.metadata?.relevance_score ?? 0) >= 0.7)
@@ -426,24 +431,6 @@ export default function ChatPage() {
         defaultSelection.length > 0
           ? defaultSelection
           : sortedChunks.slice(0, Math.min(3, sortedChunks.length)).map((chunk) => chunk.id)
-      );
-
-      updateConversationMeta(
-        currentConversationId,
-        (conv) => ({
-          ...conv,
-          kbId: selectedKB,
-          kbName,
-          title:
-            conv.title === "New Conversation"
-              ? question.slice(0, 48)
-              : conv.title,
-          preview: question,
-          messageCount: afterUser.length,
-          status: "active",
-          updatedAt: nowIso(),
-        }),
-        afterUser
       );
     } catch (error) {
       const message =
@@ -461,15 +448,18 @@ export default function ChatPage() {
 
       const finalMessages = [...afterUser, assistantMsg];
       persistMessages(currentConversationId, finalMessages);
-      
-      const kbName = knowledgeBases.find((kb) => kb.id === selectedKB)?.name || "";
-      updateConversationMeta(currentConversationId, (conv) => ({
-        ...conv,
-        kbId: selectedKB,
-        kbName,
-        messageCount: finalMessages.length,
-        updatedAt: nowIso(),
-      }), finalMessages);
+
+      updateConversationMeta(
+        currentConversationId,
+        (conv) => ({
+          ...conv,
+          kbId: selectedKB,
+          kbName,
+          messageCount: finalMessages.length,
+          updatedAt: nowIso(),
+        }),
+        finalMessages
+      );
     } finally {
       setIsRetrieving(false);
       setIsLoading(false);
@@ -542,6 +532,7 @@ export default function ChatPage() {
 
       setCandidateChunks([]);
       setSelectedChunkIds([]);
+      setIsChunksPanelCollapsed(false);
       setPendingQuestion("");
       setPendingSessionId("");
     } catch (error) {
@@ -666,87 +657,116 @@ export default function ChatPage() {
                 <p className="font-semibold">
                   Review retrieved chunks · {selectedChunkIds.length}/{candidateChunks.length} selected
                 </p>
+
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={selectAllChunks}
-                    className="px-2.5 py-1 rounded-md border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100"
+                    onClick={() => setIsChunksPanelCollapsed((prev) => !prev)}
+                    aria-expanded={!isChunksPanelCollapsed}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100"
                   >
-                    Select all
+                    <svg
+                      className={`w-4 h-4 transition-transform ${isChunksPanelCollapsed ? "rotate-180" : ""}`}
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M5.23 12.21a.75.75 0 001.06.02L10 8.915l3.71 3.315a.75.75 0 101-1.12l-4.21-3.75a.75.75 0 00-1 0l-4.21 3.75a.75.75 0 00-.06 1.06z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    {isChunksPanelCollapsed ? "Expand" : "Collapse"}
                   </button>
-                  <button
-                    type="button"
-                    onClick={clearChunkSelection}
-                    className="px-2.5 py-1 rounded-md border border-gray-200 text-gray-600 bg-white hover:bg-gray-50"
-                  >
-                    Clear
-                  </button>
+
+                  {!isChunksPanelCollapsed && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={selectAllChunks}
+                        className="px-2.5 py-1 rounded-md border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100"
+                      >
+                        Select all
+                      </button>
+                      <button
+                        type="button"
+                        onClick={clearChunkSelection}
+                        className="px-2.5 py-1 rounded-md border border-gray-200 text-gray-600 bg-white hover:bg-gray-50"
+                      >
+                        Clear
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
 
-              {pendingQuestion && <p className="mt-1 text-xs text-blue-700">Question: {pendingQuestion}</p>}
+              {!isChunksPanelCollapsed && (
+                <>
+                  {pendingQuestion && <p className="mt-1 text-xs text-blue-700">Question: {pendingQuestion}</p>}
 
-              <div className="mt-3 max-h-64 overflow-y-auto space-y-2.5 pr-1">
-                {candidateChunks.map((chunk) => {
-                  const selected = selectedChunkIds.includes(chunk.id);
-                  return (
-                    <label
-                      key={chunk.id}
-                      className={`block rounded-lg border p-3 cursor-pointer transition-colors ${
-                        selected
-                          ? "border-blue-500 bg-blue-50"
-                          : "border-gray-200 bg-white hover:border-blue-300"
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <input
-                          type="checkbox"
-                          checked={selected}
-                          onChange={() => toggleChunkSelection(chunk.id)}
-                          className="mt-0.5"
-                        />
+                  <div className="mt-3 max-h-64 overflow-y-auto space-y-2.5 pr-1">
+                    {candidateChunks.map((chunk) => {
+                      const selected = selectedChunkIds.includes(chunk.id);
+                      return (
+                        <label
+                          key={chunk.id}
+                          className={`block rounded-lg border p-3 cursor-pointer transition-colors ${
+                            selected
+                              ? "border-blue-500 bg-blue-50"
+                              : "border-gray-200 bg-white hover:border-blue-300"
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <input
+                              type="checkbox"
+                              checked={selected}
+                              onChange={() => toggleChunkSelection(chunk.id)}
+                              className="mt-0.5"
+                            />
 
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2 text-[11px] text-blue-800">
-                            <span className="px-2 py-0.5 rounded-full bg-white border border-blue-200">
-                              {chunk.metadata?.source || "Unknown source"}
-                            </span>
-                            <span className="px-2 py-0.5 rounded-full bg-white border border-blue-200">
-                              Page {chunk.metadata?.page ?? "?"}
-                            </span>
-                            <span className="px-2 py-0.5 rounded-full bg-white border border-blue-200">
-                              Score {(chunk.metadata?.relevance_score ?? 0).toFixed(3)}
-                            </span>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2 text-[11px] text-blue-800">
+                                <span className="px-2 py-0.5 rounded-full bg-white border border-blue-200">
+                                  {chunk.metadata?.source || "Unknown source"}
+                                </span>
+                                <span className="px-2 py-0.5 rounded-full bg-white border border-blue-200">
+                                  Page {chunk.metadata?.page ?? "?"}
+                                </span>
+                                <span className="px-2 py-0.5 rounded-full bg-white border border-blue-200">
+                                  Score {(chunk.metadata?.relevance_score ?? 0).toFixed(3)}
+                                </span>
+                              </div>
+
+                              <p className="mt-2 text-xs text-gray-800 line-clamp-3 leading-relaxed">
+                                {chunk.content}
+                              </p>
+                            </div>
                           </div>
+                        </label>
+                      );
+                    })}
+                  </div>
 
-                          <p className="mt-2 text-xs text-gray-800 line-clamp-3 leading-relaxed">
-                            {chunk.content}
-                          </p>
-                        </div>
-                      </div>
-                    </label>
-                  );
-                })}
-              </div>
-
-              <div className="mt-3 flex items-center justify-between gap-2">
-                {pendingSessionId ? (
-                  <p className="text-xs text-gray-500 truncate">Session: {pendingSessionId}</p>
-                ) : (
-                  <span />
-                )}
-                <button
-                  onClick={handleGenerateFromSelection}
-                  disabled={selectedChunkIds.length === 0 || isGenerating}
-                  className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-                >
-                  {isGenerating
-                    ? "Generating answer..."
-                    : `Generate answer (${selectedChunkIds.length} chunk${
-                        selectedChunkIds.length === 1 ? "" : "s"
-                      }`}
-                </button>
-              </div>
+                  <div className="mt-3 flex items-center justify-between gap-2">
+                    {pendingSessionId ? (
+                      <p className="text-xs text-gray-500 truncate">Session: {pendingSessionId}</p>
+                    ) : (
+                      <span />
+                    )}
+                    <button
+                      onClick={handleGenerateFromSelection}
+                      disabled={selectedChunkIds.length === 0 || isGenerating}
+                      className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                    >
+                      {isGenerating
+                        ? "Generating answer..."
+                        : `Generate answer (${selectedChunkIds.length} chunk${
+                            selectedChunkIds.length === 1 ? "" : "s"
+                          })`}
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           )}
 
