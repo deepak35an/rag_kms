@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { askQuestion, createSession, saveChatHistory } from "@/app/lib/api";
+import { askQuestion, createSession, listKBs, saveChatHistory } from "@/app/lib/api";
 
 interface Message {
   id: string;
@@ -121,6 +121,18 @@ function initChatState() {
   };
 }
 
+function mapKbFromServer(kb: {
+  id: string;
+  name: string;
+  doc_count: number;
+}): KnowledgeBase {
+  return {
+    id: kb.id,
+    name: kb.name,
+    docCount: kb.doc_count ?? 0,
+  };
+}
+
 export default function ChatPage() {
   const router = useRouter();
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
@@ -145,6 +157,36 @@ export default function ChatPage() {
     setCurrentConversationId(state.currentConversationId);
     setSelectedKB(state.selectedKB);
     setMessages(state.messages);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadKnowledgeBases = async () => {
+      try {
+        const response = await listKBs();
+        if (response.status !== "success") return;
+
+        const serverKBs = (response.knowledge_bases ?? []).map(mapKbFromServer);
+        if (cancelled) return;
+
+        setKnowledgeBases(serverKBs);
+        writeJSON(KB_STORAGE_KEY, serverKBs);
+
+        setSelectedKB((prev) => {
+          if (prev && serverKBs.some((kb) => kb.id === prev)) return prev;
+          return serverKBs[0]?.id || "";
+        });
+      } catch {
+        // Keep local cache fallback
+      }
+    };
+
+    void loadKnowledgeBases();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
