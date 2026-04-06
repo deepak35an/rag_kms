@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { listChats } from "@/app/lib/api";
 
 interface Conversation {
   id: string;
@@ -42,12 +43,59 @@ function formatDate(iso?: string) {
   });
 }
 
+function mapServerConversation(conv: {
+  id: string;
+  title: string;
+  preview: string;
+  message_count: number;
+  status: string;
+  kb_id: string;
+  kb_name: string;
+  updated_at: string;
+}): Conversation {
+  return {
+    id: conv.id,
+    title: conv.title || "Conversation",
+    preview: conv.preview || "",
+    messageCount: conv.message_count ?? 0,
+    status: conv.status === "archived" ? "archived" : "active",
+    kbId: conv.kb_id || "",
+    kbName: conv.kb_name || "",
+    updatedAt: conv.updated_at || "",
+  };
+}
+
 export default function HistoryPage() {
   const [conversations, setConversations] = useState<Conversation[]>(() =>
     readConversations()
   );
   const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadChats = async () => {
+      try {
+        const response = await listChats();
+        if (response.status !== "success") return;
+
+        const serverConversations = (response.conversations ?? []).map(mapServerConversation);
+        if (cancelled) return;
+
+        setConversations(serverConversations);
+        localStorage.setItem(CONVERSATIONS_KEY, JSON.stringify(serverConversations));
+      } catch {
+        // Keep existing local conversations as fallback
+      }
+    };
+
+    void loadChats();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const persist = (next: Conversation[]) => {
     setConversations(next);
