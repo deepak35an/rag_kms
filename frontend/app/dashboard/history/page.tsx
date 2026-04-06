@@ -65,6 +65,25 @@ function mapServerConversation(conv: {
   };
 }
 
+function mergeConversationsWithServerPriority(
+  localConversations: Conversation[],
+  serverConversations: Conversation[]
+): Conversation[] {
+  const merged = new Map<string, Conversation>();
+
+  // Start with local data
+  for (const conv of localConversations) {
+    merged.set(conv.id, conv);
+  }
+
+  // Overwrite with server data where IDs match
+  for (const conv of serverConversations) {
+    merged.set(conv.id, conv);
+  }
+
+  return Array.from(merged.values());
+}
+
 export default function HistoryPage() {
   const [conversations, setConversations] = useState<Conversation[]>(() =>
     readConversations()
@@ -83,8 +102,14 @@ export default function HistoryPage() {
         const serverConversations = (response.conversations ?? []).map(mapServerConversation);
         if (cancelled) return;
 
-        setConversations(serverConversations);
-        localStorage.setItem(CONVERSATIONS_KEY, JSON.stringify(serverConversations));
+        const localConversations = readConversations();
+        const mergedConversations = mergeConversationsWithServerPriority(
+          localConversations,
+          serverConversations
+        );
+
+        setConversations(mergedConversations);
+        localStorage.setItem(CONVERSATIONS_KEY, JSON.stringify(mergedConversations));
       } catch {
         // Keep existing local conversations as fallback
       }
