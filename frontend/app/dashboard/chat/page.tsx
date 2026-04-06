@@ -378,6 +378,44 @@ export default function ChatPage() {
         (a, b) =>
           (b.metadata?.relevance_score ?? 0) - (a.metadata?.relevance_score ?? 0)
       );
+
+      if (sortedChunks.length === 0) {
+        const noChunksMsg: Message = {
+          id: `msg-${Date.now()}-no-chunks`,
+          role: "assistant",
+          content:
+            "I could not find relevant chunks for that question in the selected knowledge base. Try rephrasing your question or switching the knowledge base.",
+          timestamp: timeString(),
+        };
+
+        const finalMessages = [...afterUser, noChunksMsg];
+        persistMessages(currentConversationId, finalMessages);
+
+        updateConversationMeta(
+          currentConversationId,
+          (conv) => ({
+            ...conv,
+            kbId: selectedKB,
+            kbName,
+            title:
+              conv.title === "New Conversation"
+                ? question.slice(0, 48)
+                : conv.title,
+            preview: question,
+            messageCount: finalMessages.length,
+            status: "active",
+            updatedAt: nowIso(),
+          }),
+          finalMessages
+        );
+
+        setCandidateChunks([]);
+        setSelectedChunkIds([]);
+        setPendingQuestion("");
+        setPendingSessionId("");
+        return;
+      }
+
       setCandidateChunks(sortedChunks);
 
       const defaultSelection = sortedChunks
@@ -439,13 +477,12 @@ export default function ChatPage() {
   };
 
   const handleGenerateFromSelection = async () => {
-    if (
-      !pendingQuestion ||
-      !pendingSessionId ||
-      !currentConversationId ||
-      selectedChunkIds.length === 0 ||
-      isGenerating
-    ) {
+    if (!pendingQuestion || !pendingSessionId || !currentConversationId || isGenerating) {
+      return;
+    }
+
+    if (selectedChunkIds.length === 0) {
+      setErrorText("Please select at least one chunk before generating an answer.");
       return;
     }
 
@@ -459,6 +496,10 @@ export default function ChatPage() {
           content: chunk.content,
           metadata: chunk.metadata,
         }));
+
+      if (selectedChunks.length === 0) {
+        throw new Error("No valid chunk selection found. Please reselect chunks and try again.");
+      }
 
       const response = await generateAnswer(
         pendingQuestion,
