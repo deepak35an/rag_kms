@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  askQuestion,
   createSession,
+  retrieveChunks,
   listKBs,
   saveChatHistory,
   type ChunkInfo,
@@ -326,7 +326,12 @@ export default function ChatPage() {
     const afterUser = [...messages, userMsg];
     persistMessages(currentConversationId, afterUser);
     setInputValue("");
+    setCandidateChunks([]);
+    setSelectedChunkIds([]);
+    setPendingQuestion(question);
+    setPendingSessionId("");
     setIsLoading(true);
+    setIsRetrieving(true);
 
     const kbName = knowledgeBases.find((kb) => kb.id === selectedKB)?.name || "";
     updateConversationMeta(currentConversationId, (conv) => ({
@@ -338,6 +343,8 @@ export default function ChatPage() {
           ? question.slice(0, 48)
           : conv.title,
       preview: question,
+      messageCount: afterUser.length,
+      status: "active",
       updatedAt: nowIso(),
     }), afterUser);
 
@@ -353,36 +360,42 @@ export default function ChatPage() {
         }));
       }
 
-      const response = await askQuestion(question, sessionId);
+      setPendingSessionId(sessionId);
 
-      const sourceText = response.sources?.length
-        ? `\n\nSources:\n${response.sources.map((s) => `• ${s}`).join("\n")}`
-        : "";
+      const response = await retrieveChunks(question, sessionId, selectedKB);
+      const sortedChunks = [...(response.chunks ?? [])].sort(
+        (a, b) =>
+          (b.metadata?.relevance_score ?? 0) - (a.metadata?.relevance_score ?? 0)
+      );
+      setCandidateChunks(sortedChunks);
 
-      const assistantMsg: Message = {
-        id: `msg-${Date.now()}-ai`,
-        role: "assistant",
-        content: `${response.answer || "No answer returned."}${sourceText}`,
-        timestamp: timeString(),
-      };
+      const defaultSelection = sortedChunks
+        .filter((chunk) => (chunk.metadata?.relevance_score ?? 0) >= 0.7)
+        .map((chunk) => chunk.id);
 
-      const finalMessages = [...afterUser, assistantMsg];
-      persistMessages(currentConversationId, finalMessages);
+      setSelectedChunkIds(
+        defaultSelection.length > 0
+          ? defaultSelection
+          : sortedChunks.slice(0, Math.min(3, sortedChunks.length)).map((chunk) => chunk.id)
+      );
 
-      const kbName = knowledgeBases.find((kb) => kb.id === selectedKB)?.name || "";
-      updateConversationMeta(currentConversationId, (conv) => ({
-        ...conv,
-        kbId: selectedKB,
-        kbName,
-        title:
-          conv.title === "New Conversation"
-            ? question.slice(0, 48)
-            : conv.title,
-        preview: question,
-        messageCount: finalMessages.length,
-        status: "active",
-        updatedAt: nowIso(),
-      }), finalMessages);
+      updateConversationMeta(
+        currentConversationId,
+        (conv) => ({
+          ...conv,
+          kbId: selectedKB,
+          kbName,
+          title:
+            conv.title === "New Conversation"
+              ? question.slice(0, 48)
+              : conv.title,
+          preview: question,
+          messageCount: afterUser.length,
+          status: "active",
+          updatedAt: nowIso(),
+        }),
+        afterUser
+      );
     } catch (error) {
       const message =
         error instanceof Error
@@ -409,6 +422,7 @@ export default function ChatPage() {
         updatedAt: nowIso(),
       }), finalMessages);
     } finally {
+      setIsRetrieving(false);
       setIsLoading(false);
     }
   };
@@ -541,7 +555,9 @@ export default function ChatPage() {
                         className="mt-1"
                       />
                       <span className="text-xs text-blue-900 line-clamp-2">
-                        {chunk.content}
+                        [{chunk.metadata?.source || "Unknown"} · p.{chunk.metadata?.page ?? "?"} · score {(
+                          chunk.metadata?.relevance_score ?? 0
+                        ).toFixed(3)}] {chunk.content}
                       </span>
                     </label>
                   );
