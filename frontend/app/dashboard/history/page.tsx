@@ -112,13 +112,15 @@ function normalizeChatMessages(messages: Record<string, unknown>[]) {
 }
 
 export default function HistoryPage() {
-  const [conversations, setConversations] = useState<Conversation[]>(() =>
-    readConversations()
-  );
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteInProgressId, setDeleteInProgressId] = useState<string | null>(null);
   const [errorText, setErrorText] = useState("");
   const router = useRouter();
+
+  useEffect(() => {
+    setConversations(readConversations());
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
