@@ -22,6 +22,7 @@ interface KnowledgeBase {
 interface Document {
   id: string;
   name: string;
+  serverFilename?: string;
   uploadDate: string;
   size: string;
   status: "processed" | "processing" | "failed";
@@ -37,47 +38,11 @@ const STORAGE_KEY = "rag_knowledge_bases";
 const DOCS_STORAGE_KEY = "rag_documents";
 
 const DEFAULT_KBS: KnowledgeBase[] = [
-  {
-    id: "kb-1",
-    name: "Company Policies",
-    description: "Employee handbook, HR policies, and company guidelines",
-    docCount: 2,
-    updatedAt: "2026-02-15",
-  },
-  {
-    id: "kb-2",
-    name: "Technical Documentation",
-    description: "API references, product docs, and technical guides",
-    docCount: 1,
-    updatedAt: "2026-02-20",
-  },
+  
 ];
 
 const DEFAULT_DOCS: Document[] = [
-  {
-    id: "doc-1",
-    name: "Company Handbook 2026.pdf",
-    uploadDate: "2026-03-01",
-    size: "2.4 MB",
-    status: "processed",
-    kbId: "kb-1",
-  },
-  {
-    id: "doc-2",
-    name: "HR Policies.pdf",
-    uploadDate: "2026-03-02",
-    size: "1.8 MB",
-    status: "processed",
-    kbId: "kb-1",
-  },
-  {
-    id: "doc-3",
-    name: "API Documentation.pdf",
-    uploadDate: "2026-02-20",
-    size: "3.2 MB",
-    status: "processed",
-    kbId: "kb-2",
-  },
+  
 ];
 
 function readJSON<T>(key: string, fallback: T): T {
@@ -92,6 +57,14 @@ function readJSON<T>(key: string, fallback: T): T {
 }
 
 function bootstrapKnowledgeBaseState() {
+  if (typeof window === "undefined") {
+    return {
+      knowledgeBases: DEFAULT_KBS,
+      documents: DEFAULT_DOCS,
+      selectedId: DEFAULT_KBS[0]?.id ?? null,
+    };
+  }
+
   const knowledgeBases = readJSON<KnowledgeBase[]>(STORAGE_KEY, DEFAULT_KBS);
   const documents = readJSON<Document[]>(DOCS_STORAGE_KEY, DEFAULT_DOCS);
 
@@ -122,26 +95,9 @@ function mapIngestStatusToUiStatus(status?: string): Document["status"] {
 }
 
 export default function KnowledgeBasePage() {
-  const [boot] = useState(() => {
-    if (typeof window === "undefined") {
-      return {
-        knowledgeBases: DEFAULT_KBS,
-        documents: DEFAULT_DOCS,
-        selectedId: DEFAULT_KBS[0]?.id ?? null,
-      };
-    }
-    return bootstrapKnowledgeBaseState();
-  });
-
-  const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>(
-    boot.knowledgeBases
-  );
-  const [documents, setDocuments] = useState<Document[]>(
-    boot.documents
-  );
-  const [selectedId, setSelectedId] = useState<string | null>(
-    boot.selectedId
-  );
+  const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>(DEFAULT_KBS);
+  const [documents, setDocuments] = useState<Document[]>(DEFAULT_DOCS);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newKBName, setNewKBName] = useState("");
   const [newKBDesc, setNewKBDesc] = useState("");
@@ -153,6 +109,25 @@ export default function KnowledgeBasePage() {
     setToast({ message, type });
     window.setTimeout(() => setToast(null), 2400);
   };
+
+  const removeDocFromState = (docId: string, kbId: string) => {
+    const updatedDocs = documents.filter((d) => d.id !== docId);
+    setDocuments(updatedDocs);
+    localStorage.setItem(DOCS_STORAGE_KEY, JSON.stringify(updatedDocs));
+
+    const updatedKBs = knowledgeBases.map((kb) =>
+      kb.id === kbId ? { ...kb, docCount: Math.max(0, kb.docCount - 1) } : kb
+    );
+    setKnowledgeBases(updatedKBs);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedKBs));
+  };
+
+  useEffect(() => {
+    const boot = bootstrapKnowledgeBaseState();
+    setKnowledgeBases(boot.knowledgeBases);
+    setDocuments(boot.documents);
+    setSelectedId(boot.selectedId);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -213,6 +188,7 @@ export default function KnowledgeBasePage() {
         const serverDocs: Document[] = (response.documents ?? []).map((doc, index) => ({
           id: `${selectedId}-${doc.filename}-${index}`,
           name: doc.filename,
+          serverFilename: doc.filename,
           uploadDate: doc.uploaded_at?.split("T")[0] || "-",
           size: `${(doc.size_bytes / 1024 / 1024).toFixed(1)} MB`,
           status: mapIngestStatusToUiStatus(doc.ingest_status),
@@ -331,6 +307,7 @@ export default function KnowledgeBasePage() {
       const newDocs: Document[] = uploadedFiles.map((file) => ({
         id: `doc-${Date.now()}-${Math.random()}`,
         name: file.original_filename || file.filename,
+        serverFilename: file.filename,
         uploadDate: new Date().toISOString().split("T")[0],
         size: `${(file.size_bytes / 1024 / 1024).toFixed(1)} MB`,
         status: "processing" as const, // Start with processing status
@@ -418,21 +395,23 @@ export default function KnowledgeBasePage() {
     if (!doc) return;
 
     try {
-      const response = await deleteDoc(doc.kbId, doc.name);
+      const filenameToDelete = doc.serverFilename || doc.name;
+      const response = await deleteDoc(doc.kbId, filenameToDelete);
+
       if (response.status !== "success") {
-        throw new Error(response.message || "Failed to delete document");
+        const message = response.message || "Failed to delete document";
+
+        if (message.toLowerCase().includes("not found")) {
+          // Local state is stale compared to server; remove row and sync UI.
+          removeDocFromState(docId, doc.kbId);
+          showToast("Document was already removed on server. Synced list.");
+          return;
+        }
+
+        throw new Error(message);
       }
 
-      const updatedDocs = documents.filter((d) => d.id !== docId);
-      setDocuments(updatedDocs);
-      localStorage.setItem(DOCS_STORAGE_KEY, JSON.stringify(updatedDocs));
-
-      // Update doc count in KB
-      const updatedKBs = knowledgeBases.map((kb) =>
-        kb.id === doc.kbId ? { ...kb, docCount: Math.max(0, kb.docCount - 1) } : kb
-      );
-      setKnowledgeBases(updatedKBs);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedKBs));
+      removeDocFromState(docId, doc.kbId);
       showToast("Document deleted");
     } catch (error) {
       showToast(

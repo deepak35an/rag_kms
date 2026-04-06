@@ -262,6 +262,17 @@ export async function getChat(
   return res.json();
 }
 
+export async function deleteChat(
+  conversationId: string
+): Promise<OperationResponse> {
+  const safeConversationId = encodeURIComponent(conversationId);
+  const res = await fetch(`${API_BASE}/delete_chat/${safeConversationId}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) throw new Error("Failed to delete chat");
+  return res.json();
+}
+
 export async function retrieveChunks(
   question: string,
   sessionId: string,

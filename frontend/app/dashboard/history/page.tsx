@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { getChat, listChats } from "@/app/lib/api";
+import { deleteChat, getChat, listChats } from "@/app/lib/api";
 
 interface Conversation {
   id: string;
@@ -116,6 +116,8 @@ export default function HistoryPage() {
     readConversations()
   );
   const [searchQuery, setSearchQuery] = useState("");
+  const [deleteInProgressId, setDeleteInProgressId] = useState<string | null>(null);
+  const [errorText, setErrorText] = useState("");
   const router = useRouter();
 
   useEffect(() => {
@@ -154,18 +156,38 @@ export default function HistoryPage() {
     localStorage.setItem(CONVERSATIONS_KEY, JSON.stringify(next));
   };
 
-  const handleDelete = (id: string) => {
-    const next = conversations.filter((c) => c.id !== id);
-    persist(next);
-    localStorage.removeItem(`${MSG_PREFIX}${id}`);
+  const handleDelete = async (id: string) => {
+    if (deleteInProgressId) return;
 
-    const active = localStorage.getItem(ACTIVE_CONVERSATION_KEY);
-    if (active === id) {
-      if (next[0]?.id) {
-        localStorage.setItem(ACTIVE_CONVERSATION_KEY, next[0].id);
-      } else {
-        localStorage.removeItem(ACTIVE_CONVERSATION_KEY);
+    setErrorText("");
+    setDeleteInProgressId(id);
+
+    try {
+      const response = await deleteChat(id);
+      if (response.status !== "success") {
+        throw new Error(response.message || "Failed to delete conversation");
       }
+
+      const next = conversations.filter((c) => c.id !== id);
+      persist(next);
+      localStorage.removeItem(`${MSG_PREFIX}${id}`);
+
+      const active = localStorage.getItem(ACTIVE_CONVERSATION_KEY);
+      if (active === id) {
+        if (next[0]?.id) {
+          localStorage.setItem(ACTIVE_CONVERSATION_KEY, next[0].id);
+        } else {
+          localStorage.removeItem(ACTIVE_CONVERSATION_KEY);
+        }
+      }
+    } catch (error) {
+      setErrorText(
+        error instanceof Error
+          ? error.message
+          : "Failed to delete conversation"
+      );
+    } finally {
+      setDeleteInProgressId(null);
     }
   };
 
@@ -260,6 +282,12 @@ export default function HistoryPage() {
         </h2>
       </div>
 
+      {errorText && (
+        <p className="mb-5 text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+          {errorText}
+        </p>
+      )}
+
       {filteredConversations.length === 0 ? (
         <div className="text-center py-20 text-gray-400 bg-white border border-gray-200 rounded-2xl">
           <svg
@@ -335,8 +363,9 @@ export default function HistoryPage() {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleDelete(conv.id);
+                      void handleDelete(conv.id);
                     }}
+                    disabled={deleteInProgressId === conv.id}
                     className="p-3 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
                     title="Delete conversation"
                   >
