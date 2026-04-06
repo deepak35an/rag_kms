@@ -2,7 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { askQuestion, createSession, listKBs, saveChatHistory } from "@/app/lib/api";
+import {
+  askQuestion,
+  createSession,
+  listKBs,
+  saveChatHistory,
+  type ChunkInfo,
+} from "@/app/lib/api";
 
 interface Message {
   id: string;
@@ -143,8 +149,22 @@ export default function ChatPage() {
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [errorText, setErrorText] = useState("");
+  const [candidateChunks, setCandidateChunks] = useState<ChunkInfo[]>([]);
+  const [selectedChunkIds, setSelectedChunkIds] = useState<string[]>([]);
+  const [pendingQuestion, setPendingQuestion] = useState("");
+  const [pendingSessionId, setPendingSessionId] = useState("");
+  const [isRetrieving, setIsRetrieving] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const hydrationDoneRef = useRef(false);
+
+  const toggleChunkSelection = (chunkId: string) => {
+    setSelectedChunkIds((prev) =>
+      prev.includes(chunkId)
+        ? prev.filter((id) => id !== chunkId)
+        : [...prev, chunkId]
+    );
+  };
 
   // Load from localStorage after hydration completes
   useEffect(() => {
@@ -218,6 +238,12 @@ export default function ChatPage() {
       welcomeMessage(),
     ]);
     setMessages(nextMessages);
+    setCandidateChunks([]);
+    setSelectedChunkIds([]);
+    setPendingQuestion("");
+    setPendingSessionId("");
+    setIsRetrieving(false);
+    setIsGenerating(false);
   };
 
   const createNewConversation = () => {
@@ -242,6 +268,12 @@ export default function ChatPage() {
     setCurrentConversationId(conv.id);
     setSelectedKB(conv.kbId);
     setMessages(nextMessages);
+    setCandidateChunks([]);
+    setSelectedChunkIds([]);
+    setPendingQuestion("");
+    setPendingSessionId("");
+    setIsRetrieving(false);
+    setIsGenerating(false);
     setInputValue("");
     setErrorText("");
     localStorage.setItem(ACTIVE_CONVERSATION_KEY, conv.id);
@@ -270,7 +302,16 @@ export default function ChatPage() {
   };
 
   const handleSend = async () => {
-    if (isLoading || !inputValue.trim() || !selectedKB || !currentConversationId) return;
+    if (
+      isLoading ||
+      isRetrieving ||
+      isGenerating ||
+      !inputValue.trim() ||
+      !selectedKB ||
+      !currentConversationId
+    ) {
+      return;
+    }
 
     setErrorText("");
     const question = inputValue.trim();
@@ -456,7 +497,7 @@ export default function ChatPage() {
             </div>
           ))}
 
-          {isLoading && (
+          {(isLoading || isRetrieving || isGenerating) && (
             <div className="flex gap-4">
               <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center shrink-0">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -464,7 +505,11 @@ export default function ChatPage() {
                 </svg>
               </div>
               <div className="bg-gray-100 rounded-2xl px-5 py-4 text-base text-gray-500">
-                Thinking...
+                {isGenerating
+                  ? "Generating answer from selected chunks..."
+                  : isRetrieving
+                  ? "Retrieving relevant chunks..."
+                  : "Thinking..."}
               </div>
             </div>
           )}
@@ -473,6 +518,38 @@ export default function ChatPage() {
         </div>
 
         <div className="p-6 border-t border-gray-100 bg-white">
+          {candidateChunks.length > 0 && (
+            <div className="mb-4 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-sm text-blue-800">
+              <p className="font-medium">
+                {candidateChunks.length} candidate chunks ready · {selectedChunkIds.length} selected
+              </p>
+              {pendingQuestion && <p className="mt-1">Question: {pendingQuestion}</p>}
+              {pendingSessionId && <p className="mt-1">Session: {pendingSessionId}</p>}
+
+              <div className="mt-3 max-h-40 overflow-y-auto space-y-2">
+                {candidateChunks.map((chunk) => {
+                  const selected = selectedChunkIds.includes(chunk.id);
+                  return (
+                    <label
+                      key={chunk.id}
+                      className="flex items-start gap-2 rounded-lg bg-white px-3 py-2 border border-blue-100 cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        onChange={() => toggleChunkSelection(chunk.id)}
+                        className="mt-1"
+                      />
+                      <span className="text-xs text-blue-900 line-clamp-2">
+                        {chunk.content}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center gap-3 mb-4 bg-gray-50 px-5 py-3 rounded-xl border border-gray-100">
             <svg className="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-8.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" />
@@ -507,7 +584,7 @@ export default function ChatPage() {
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && !isLoading) {
+                if (e.key === "Enter" && !isLoading && !isRetrieving && !isGenerating) {
                   handleSend();
                 }
               }}
@@ -517,7 +594,7 @@ export default function ChatPage() {
             />
             <button
               onClick={handleSend}
-              disabled={!inputValue.trim() || !selectedKB || isLoading}
+              disabled={!inputValue.trim() || !selectedKB || isLoading || isRetrieving || isGenerating}
               className="p-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
