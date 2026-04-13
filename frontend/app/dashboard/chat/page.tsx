@@ -41,6 +41,40 @@ const CONVERSATIONS_KEY = "rag_conversations";
 const ACTIVE_CONVERSATION_KEY = "rag_active_conversation_id";
 const MSG_PREFIX = "rag_messages_";
 
+function markdownToPlainText(markdown: string) {
+  if (!markdown) return "";
+
+  return markdown
+    .replace(/\r/g, "")
+    .replace(/```[\s\S]*?```/g, (codeBlock) =>
+      codeBlock
+        .replace(/```[a-zA-Z0-9_-]*\n?/g, "")
+        .replace(/```/g, "")
+        .trim()
+    )
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/^>\s?/gm, "")
+    .replace(/^\s*[-*+]\s+/gm, "• ")
+    .replace(/^\s*\d+\.\s+/gm, "")
+    .replace(/^\|\s*[-:|\s]+\|$/gm, "")
+    .replace(/^\|(.+)\|$/gm, (_, row: string) =>
+      row
+        .split("|")
+        .map((cell) => cell.trim())
+        .filter(Boolean)
+        .join("  ")
+    )
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/__(.*?)__/g, "$1")
+    .replace(/~~(.*?)~~/g, "$1")
+    .replace(/<[^>]+>/g, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 function nowIso() {
   return new Date().toISOString();
 }
@@ -160,6 +194,7 @@ export default function ChatPage() {
   const [isGenerating, setIsGenerating] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const streamIntervalRef = useRef<number | null>(null);
   const hydrationDoneRef = useRef(false);
 
   const isBusy = isLoading || isRetrieving || isGenerating;
@@ -179,6 +214,62 @@ export default function ChatPage() {
   const clearChunkSelection = () => {
     setSelectedChunkIds([]);
   };
+
+  const streamAssistantMessage = (
+    conversationId: string,
+    messageId: string,
+    fullText: string,
+    seedMessages: Message[]
+  ) =>
+    new Promise<Message[]>((resolve) => {
+      const textToStream = fullText || "No answer returned.";
+      const textLength = textToStream.length;
+
+      if (textLength === 0) {
+        resolve(seedMessages);
+        return;
+      }
+
+      if (streamIntervalRef.current !== null) {
+        window.clearInterval(streamIntervalRef.current);
+        streamIntervalRef.current = null;
+      }
+
+      let cursor = 0;
+      const step =
+        textLength > 2800
+          ? 20
+          : textLength > 1600
+          ? 14
+          : textLength > 900
+          ? 10
+          : 6;
+
+      const pushFrame = () => {
+        cursor = Math.min(textLength, cursor + step);
+
+        const streamedMessages = seedMessages.map((message) =>
+          message.id === messageId
+            ? { ...message, content: textToStream.slice(0, cursor) }
+            : message
+        );
+
+        setMessages(streamedMessages);
+
+        if (cursor >= textLength) {
+          if (streamIntervalRef.current !== null) {
+            window.clearInterval(streamIntervalRef.current);
+            streamIntervalRef.current = null;
+          }
+          // Keep local cache in sync with final streamed content
+          writeJSON(`${MSG_PREFIX}${conversationId}`, streamedMessages);
+          resolve(streamedMessages);
+        }
+      };
+
+      pushFrame();
+      streamIntervalRef.current = window.setInterval(pushFrame, 18);
+    });
 
   useEffect(() => {
     if (hydrationDoneRef.current) return;
@@ -225,6 +316,14 @@ export default function ChatPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    return () => {
+      if (streamIntervalRef.current !== null) {
+        window.clearInterval(streamIntervalRef.current);
+      }
+    };
+  }, []);
 
   const currentConversation =
     conversations.find((c) => c.id === currentConversationId) ?? null;
@@ -497,18 +596,36 @@ export default function ChatPage() {
         selectedChunks
       );
 
-      const sourceText = response.sources?.length
-        ? `\n\nSources:\n${response.sources.map((s) => `• ${s}`).join("\n")}`
+      const plainAnswer = markdownToPlainText(
+        response.answer || "No answer returned."
+      );
+      const plainSources = (response.sources ?? [])
+        .map((source) => markdownToPlainText(String(source)))
+        .filter((source) => source.length > 0);
+
+      const sourceText = plainSources.length
+        ? `\n\nSources:\n${plainSources.map((s) => `• ${s}`).join("\n")}`
         : "";
 
-      const assistantMsg: Message = {
-        id: `msg-${Date.now()}-ai`,
+      const finalAssistantContent = `${plainAnswer}${sourceText}`.trim();
+
+      const assistantMsgId = `msg-${Date.now()}-ai`;
+      const assistantSeed: Message = {
+        id: assistantMsgId,
         role: "assistant",
-        content: `${response.answer || "No answer returned."}${sourceText}`,
+        content: "",
         timestamp: timeString(),
       };
 
-      const finalMessages = [...messages, assistantMsg];
+      const seedMessages = [...messages, assistantSeed];
+      setMessages(seedMessages);
+
+      const finalMessages = await streamAssistantMessage(
+        currentConversationId,
+        assistantMsgId,
+        finalAssistantContent,
+        seedMessages
+      );
       persistMessages(currentConversationId, finalMessages);
 
       const kbName = knowledgeBases.find((kb) => kb.id === selectedKB)?.name || "";
@@ -573,7 +690,7 @@ export default function ChatPage() {
             onClick={() => switchConversation(conv.id)}
             className={`text-sm px-4 py-2 rounded-xl border transition-colors ${
               conv.id === currentConversationId
-                ? "border-blue-600 bg-blue-50 text-blue-700"
+                ? "border-[#d8c183] bg-[#f6f0df] text-[#816a35] dark:border-[#524123] dark:bg-[#3b3018]/70 dark:text-[#e6cf97]"
                 : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
             }`}
           >
@@ -602,7 +719,7 @@ export default function ChatPage() {
               <div
                 className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
                   msg.role === "assistant"
-                    ? "bg-blue-600 text-white"
+                    ? "bg-[#b79a52] text-white"
                     : "bg-gray-300 text-gray-700"
                 }`}
               >
@@ -620,7 +737,7 @@ export default function ChatPage() {
                   className={`inline-block rounded-2xl px-5 py-4 text-base whitespace-pre-wrap ${
                     msg.role === "assistant"
                       ? "bg-gray-100 text-gray-900"
-                      : "bg-blue-600 text-white"
+                      : "bg-[#b79a52] text-white"
                   }`}
                 >
                   {msg.content}
@@ -632,7 +749,7 @@ export default function ChatPage() {
 
           {(isLoading || isRetrieving || isGenerating) && (
             <div className="flex gap-4">
-              <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-full bg-[#b79a52] text-white flex items-center justify-center shrink-0">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
                 </svg>
@@ -652,7 +769,7 @@ export default function ChatPage() {
 
         <div className="p-6 border-t border-gray-100 bg-white">
           {candidateChunks.length > 0 && (
-            <div className="mb-4 bg-white border border-blue-200 rounded-xl px-4 py-4 text-sm text-blue-900">
+            <div className="mb-4 rounded-xl border border-[#dbc892] bg-white px-4 py-4 text-sm text-[#816a35] dark:border-[#524123] dark:bg-zinc-900 dark:text-[#e6cf97]">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="font-semibold">
                   Review retrieved chunks · {selectedChunkIds.length}/{candidateChunks.length} selected
@@ -663,7 +780,7 @@ export default function ChatPage() {
                     type="button"
                     onClick={() => setIsChunksPanelCollapsed((prev) => !prev)}
                     aria-expanded={!isChunksPanelCollapsed}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100"
+                    className="inline-flex items-center gap-1.5 rounded-md border border-[#dbc892] bg-[#f6f0df] px-2.5 py-1 text-[#816a35] hover:bg-[#ebdfbf] dark:border-[#524123] dark:bg-[#3b3018]/60 dark:text-[#e6cf97] dark:hover:bg-[#3b3018]"
                   >
                     <svg
                       className={`w-4 h-4 transition-transform ${isChunksPanelCollapsed ? "rotate-180" : ""}`}
@@ -684,7 +801,7 @@ export default function ChatPage() {
                       <button
                         type="button"
                         onClick={selectAllChunks}
-                        className="px-2.5 py-1 rounded-md border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100"
+                        className="rounded-md border border-[#dbc892] bg-[#f6f0df] px-2.5 py-1 text-[#816a35] hover:bg-[#ebdfbf] dark:border-[#524123] dark:bg-[#3b3018]/60 dark:text-[#e6cf97] dark:hover:bg-[#3b3018]"
                       >
                         Select all
                       </button>
@@ -702,7 +819,7 @@ export default function ChatPage() {
 
               {!isChunksPanelCollapsed && (
                 <>
-                  {pendingQuestion && <p className="mt-1 text-xs text-blue-700">Question: {pendingQuestion}</p>}
+                  {pendingQuestion && <p className="mt-1 text-xs text-[#816a35] dark:text-[#d9bf84]">Question: {pendingQuestion}</p>}
 
                   <div className="mt-3 max-h-64 overflow-y-auto space-y-2.5 pr-1">
                     {candidateChunks.map((chunk) => {
@@ -712,8 +829,8 @@ export default function ChatPage() {
                           key={chunk.id}
                           className={`block rounded-lg border p-3 cursor-pointer transition-colors ${
                             selected
-                              ? "border-blue-500 bg-blue-50"
-                              : "border-gray-200 bg-white hover:border-blue-300"
+                              ? "border-[#c3a968] bg-[#f6f0df] dark:border-[#816a35] dark:bg-[#3b3018]/50"
+                              : "border-gray-200 bg-white hover:border-[#d8c183] dark:border-zinc-700 dark:bg-zinc-900 dark:hover:border-[#816a35]"
                           }`}
                         >
                           <div className="flex items-start gap-3">
@@ -725,14 +842,14 @@ export default function ChatPage() {
                             />
 
                             <div className="min-w-0 flex-1">
-                              <div className="flex flex-wrap items-center gap-2 text-[11px] text-blue-800">
-                                <span className="px-2 py-0.5 rounded-full bg-white border border-blue-200">
+                              <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#816a35] dark:text-[#e6cf97]">
+                                <span className="rounded-full border border-[#dbc892] bg-white px-2 py-0.5 dark:border-[#524123] dark:bg-zinc-900">
                                   {chunk.metadata?.source || "Unknown source"}
                                 </span>
-                                <span className="px-2 py-0.5 rounded-full bg-white border border-blue-200">
+                                <span className="rounded-full border border-[#dbc892] bg-white px-2 py-0.5 dark:border-[#524123] dark:bg-zinc-900">
                                   Page {chunk.metadata?.page ?? "?"}
                                 </span>
-                                <span className="px-2 py-0.5 rounded-full bg-white border border-blue-200">
+                                <span className="rounded-full border border-[#dbc892] bg-white px-2 py-0.5 dark:border-[#524123] dark:bg-zinc-900">
                                   Score {(chunk.metadata?.relevance_score ?? 0).toFixed(3)}
                                 </span>
                               </div>
@@ -756,7 +873,7 @@ export default function ChatPage() {
                     <button
                       onClick={handleGenerateFromSelection}
                       disabled={selectedChunkIds.length === 0 || isGenerating}
-                      className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                      className="rounded-lg bg-[#b79a52] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#a48745] disabled:cursor-not-allowed disabled:bg-gray-300 dark:disabled:bg-zinc-700"
                     >
                       {isGenerating
                         ? "Generating answer..."
@@ -798,7 +915,7 @@ export default function ChatPage() {
             </p>
           )}
 
-          <div className="flex items-center gap-3 bg-white p-3 rounded-2xl border border-gray-300 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all shadow-sm">
+          <div className="flex items-center gap-3 rounded-2xl border border-gray-300 bg-white p-3 shadow-sm transition-all focus-within:border-[#b79a52] focus-within:ring-2 focus-within:ring-[#b79a52]/30">
             <input
               type="text"
               value={inputValue}
@@ -815,7 +932,7 @@ export default function ChatPage() {
             <button
               onClick={handleSend}
               disabled={!inputValue.trim() || !selectedKB || isBusy}
-              className="inline-flex items-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
+              className="inline-flex items-center gap-2 rounded-xl bg-[#b79a52] px-4 py-3 text-white transition-colors hover:bg-[#a48745] disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />

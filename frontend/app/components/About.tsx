@@ -1,6 +1,6 @@
 export default function About() {
   return (
-    <section id="about" className="py-24 px-4 sm:px-6 lg:px-8 bg-white">
+    <section id="about" className="py-24 px-4 sm:px-6 lg:px-8 bg-white dark:bg-zinc-900">
       <div className="max-w-7xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           {/* Left: Text Content */}
@@ -43,7 +43,7 @@ export default function About() {
 
           {/* Right: Visual Card */}
           <div className="relative">
-            <div className="bg-gray-50 border border-gray-200 rounded-2xl p-8 space-y-4">
+            <div className="bg-gray-50 border border-gray-200 rounded-2xl p-8 space-y-4 dark:bg-zinc-950 dark:border-zinc-800">
               {/* Mock chat bubble */}
               <div className="flex items-start gap-3">
                 <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center shrink-0 text-xs font-bold text-gray-500">

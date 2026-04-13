@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import ThemeToggle from "@/components/theme-toggle";
 
 export default function LoginPage() {
   const HARDCODED_EMAIL = "admin@ragplatform.local";
@@ -55,7 +56,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 dark:bg-zinc-950">
       {/* Back to home */}
       <Link
         href="/"
@@ -67,15 +68,19 @@ export default function LoginPage() {
         Back to home
       </Link>
 
+      <div className="absolute top-6 right-6">
+        <ThemeToggle />
+      </div>
+
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2">
-            <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center">
+            <div className="w-9 h-9 bg-[#b79a52] rounded-xl flex items-center justify-center">
               <span className="text-white font-bold">C</span>
             </div>
             <span className="text-2xl font-bold text-gray-900">
-              Context<span className="text-blue-600">IQ</span>
+              Context<span className="text-[#a48745]">IQ</span>
             </span>
           </Link>
           <p className="mt-3 text-gray-500 text-sm">
@@ -121,7 +126,7 @@ export default function LoginPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="John Doe"
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#b79a52]/30 focus:border-transparent transition"
                 />
               </div>
             )}
@@ -135,7 +140,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#b79a52]/30 focus:border-transparent transition"
               />
             </div>
 
@@ -148,7 +153,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#b79a52]/30 focus:border-transparent transition"
               />
             </div>
 
@@ -161,7 +166,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-2.5 rounded-xl transition-colors mt-2"
+              className="mt-2 w-full rounded-xl bg-[#b79a52] py-2.5 font-semibold text-white transition-colors hover:bg-[#a48745] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading
                 ? "Please wait..."

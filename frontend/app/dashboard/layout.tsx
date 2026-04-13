@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { useState } from "react";
+import ThemeToggle from "@/components/theme-toggle";
 
 const navItems = [
   {
@@ -62,7 +63,7 @@ export default function DashboardLayout({
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex overflow-hidden">
+    <div className="min-h-screen bg-gray-50 flex overflow-hidden transition-colors dark:bg-zinc-950">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
@@ -73,13 +74,13 @@ export default function DashboardLayout({
 
       {/* Sidebar */}
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-50 w-72 bg-white text-gray-900 flex flex-col transform transition-transform duration-200 ease-in-out border border-gray-200 shadow-sm lg:rounded-3xl lg:my-4 lg:ml-4 lg:h-[calc(100vh-2rem)] ${
+        className={`fixed lg:static inset-y-0 left-0 z-50 w-72 bg-white text-gray-900 flex flex-col transform transition-transform duration-200 ease-in-out border border-gray-200 shadow-sm lg:rounded-3xl lg:my-4 lg:ml-4 lg:h-[calc(100vh-2rem)] dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
         {/* Branding */}
         <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-200 mt-2">
-          <div className="flex items-center justify-center text-blue-600">
+          <div className="flex items-center justify-center text-[#a48745]">
             <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
             </svg>
@@ -101,7 +102,7 @@ export default function DashboardLayout({
                 onClick={() => setSidebarOpen(false)}
                 className={`flex items-center gap-3 px-3 py-3 rounded-xl text-base font-medium transition-colors ${
                   isActive
-                    ? "bg-blue-50 text-blue-600"
+                    ? "bg-[#f6f0df] text-[#816a35] dark:bg-[#3b3018]/70 dark:text-[#e6cf97]"
                     : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                 }`}
               >
@@ -112,7 +113,13 @@ export default function DashboardLayout({
           })}
         </nav>
 
-        <div className="p-4 border-t border-gray-200">
+        <div className="px-4 pt-4 border-t border-gray-200 dark:border-zinc-800">
+          <div className="mb-3 flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800/70">
+            <span className="text-sm font-medium text-gray-600 dark:text-zinc-300">Theme</span>
+            <ThemeToggle />
+          </div>
+
+          <div className="pb-4">
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-base font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
@@ -122,13 +129,15 @@ export default function DashboardLayout({
             </svg>
             Logout
           </button>
+          </div>
         </div>
       </aside>
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 h-screen">
         {/* Top bar (mobile) */}
-        <header className="lg:hidden flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-200">
+        <header className="lg:hidden flex items-center justify-between gap-3 px-4 py-3 bg-white border-b border-gray-200 dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="flex items-center gap-3">
           <button
             onClick={() => setSidebarOpen(true)}
             className="p-2 -ml-2 rounded-lg text-gray-600 hover:bg-gray-100"
@@ -138,6 +147,8 @@ export default function DashboardLayout({
             </svg>
           </button>
           <div className="font-semibold text-lg text-gray-900">RAG Platform</div>
+          </div>
+          <ThemeToggle />
         </header>
 
         {/* Page content */}

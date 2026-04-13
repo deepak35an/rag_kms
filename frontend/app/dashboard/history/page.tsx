@@ -272,7 +272,7 @@ export default function HistoryPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search conversations..."
-            className="w-full pl-12 pr-5 py-4 bg-gray-50 border border-gray-200 rounded-xl text-base text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors"
+            className="w-full pl-12 pr-5 py-4 bg-gray-50 border border-gray-200 rounded-xl text-base text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#b79a52]/30 focus:border-[#b79a52] focus:bg-white transition-colors"
           />
         </div>
       </div>
@@ -320,10 +320,10 @@ export default function HistoryPage() {
               onClick={() => {
                 void openConversation(conv.id);
               }}
-              className="bg-white rounded-2xl border border-gray-200 p-6 hover:shadow-md hover:border-blue-300 cursor-pointer transition-all flex items-start justify-between group"
+              className="bg-white rounded-2xl border border-gray-200 p-6 hover:shadow-md hover:border-[#d8c183] cursor-pointer transition-all flex items-start justify-between group"
             >
               <div className="flex items-start gap-5 flex-1 min-w-0 pr-5">
-                <div className="w-14 h-14 bg-blue-50 rounded-xl flex items-center justify-center shrink-0 text-blue-600 group-hover:bg-blue-100 transition-colors">
+                <div className="w-14 h-14 bg-[#f6f0df] rounded-xl flex items-center justify-center shrink-0 text-[#a48745] group-hover:bg-[#ebdfbf] transition-colors">
                   <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-8.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" />
                   </svg>
@@ -331,7 +331,7 @@ export default function HistoryPage() {
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-4 mb-2">
-                    <h3 className="font-semibold text-gray-900 text-xl group-hover:text-blue-600 transition-colors">
+                    <h3 className="font-semibold text-gray-900 text-xl group-hover:text-[#816a35] transition-colors">
                       {conv.title || "Conversation"}
                     </h3>
                     {conv.status === "active" && (

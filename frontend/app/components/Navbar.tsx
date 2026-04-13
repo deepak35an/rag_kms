@@ -1,88 +1,98 @@
 "use client";
 
 import Link from "next/link";
+import { Menu, Sparkles, X } from "lucide-react";
 import { useState } from "react";
+import ThemeToggle from "@/components/theme-toggle";
+
+const navItems = [
+  { href: "#features", label: "Features" },
+  { href: "#about", label: "About" },
+  { href: "#how-it-works", label: "How It Works" }
+];
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-linear-to-br from-blue-600 to-indigo-700 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">C</span>
-            </div>
-            <span className="text-xl font-bold text-gray-900">
-              Context<span className="text-blue-600">IQ</span>
+    <nav className="fixed inset-x-0 top-0 z-50 px-4 pt-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-6xl rounded-2xl border border-zinc-300/80 bg-white/80 px-4 shadow-[0_14px_36px_rgba(0,0,0,0.08)] backdrop-blur-xl dark:border-zinc-700 dark:bg-zinc-900/80">
+        <div className="flex h-16 items-center justify-between">
+          <Link href="/" className="flex items-center gap-3">
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-linear-to-br from-[#d9bf84] via-[#b79a52] to-[#8f753d] text-zinc-950 shadow-sm">
+              <Sparkles className="h-4.5 w-4.5" />
+            </span>
+
+            <span className="leading-tight">
+              <span className="block text-sm font-semibold tracking-[0.14em] text-zinc-900 dark:text-zinc-100">
+                RAG AI
+              </span>
+              <span className="block text-[10px] font-medium uppercase tracking-[0.16em] text-zinc-500 dark:text-zinc-400">
+                Smart PDF Intelligence
+              </span>
             </span>
           </Link>
 
-          {/* Desktop Nav Links */}
-          <div className="hidden md:flex items-center gap-8">
-            <a href="#features" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
-              Features
-            </a>
-            <a href="#about" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
-              About
-            </a>
-            <a href="#how-it-works" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
-              How It Works
-            </a>
+          <div className="hidden items-center gap-8 md:flex">
+            {navItems.map(({ href, label }) => (
+              <a
+                key={href}
+                href={href}
+                className="text-sm font-medium text-zinc-600 transition-colors hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-zinc-100"
+              >
+                {label}
+              </a>
+            ))}
           </div>
 
-          {/* Auth Buttons */}
-          <div className="hidden md:flex items-center gap-3">
+          <div className="hidden items-center gap-3 md:flex">
+            <ThemeToggle />
             <Link
               href="/login"
-              className="text-sm font-medium text-gray-700 hover:text-gray-900 px-4 py-2 transition-colors"
+              className="rounded-lg px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-zinc-100"
             >
               Log in
             </Link>
             <Link
               href="/login"
-              className="text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-5 py-2.5 rounded-lg transition-colors shadow-sm"
+              className="inline-flex items-center justify-center rounded-lg bg-linear-to-b from-white via-white/95 to-white/70 px-5 py-2.5 text-sm font-semibold text-zinc-950 shadow-[0_12px_25px_rgba(0,0,0,0.08)] transition-transform hover:-translate-y-0.5 dark:from-zinc-100 dark:via-zinc-50 dark:to-zinc-200"
             >
               Get Started
             </Link>
           </div>
 
-          {/* Mobile Menu Button */}
-          <button
-            className="md:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-100"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              {mobileMenuOpen ? (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              )}
-            </svg>
-          </button>
+          <div className="flex items-center gap-2 md:hidden">
+            <ThemeToggle />
+            <button
+              type="button"
+              className="rounded-lg p-2 text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+            >
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
+          </div>
         </div>
 
-        {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-t border-gray-100 py-4 space-y-3">
-            <a href="#features" className="block text-sm font-medium text-gray-600 hover:text-gray-900 px-2 py-1.5">
-              Features
-            </a>
-            <a href="#about" className="block text-sm font-medium text-gray-600 hover:text-gray-900 px-2 py-1.5">
-              About
-            </a>
-            <a href="#how-it-works" className="block text-sm font-medium text-gray-600 hover:text-gray-900 px-2 py-1.5">
-              How It Works
-            </a>
-            <div className="pt-3 border-t border-gray-100 flex flex-col gap-2">
-              <Link href="/login" className="text-sm font-medium text-gray-700 px-2 py-1.5">
+          <div className="space-y-3 border-t border-zinc-200 py-4 dark:border-zinc-800 md:hidden">
+            {navItems.map(({ href, label }) => (
+              <a
+                key={href}
+                href={href}
+                className="block rounded-md px-2 py-1.5 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-950 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+              >
+                {label}
+              </a>
+            ))}
+
+            <div className="flex flex-col gap-2 border-t border-zinc-200 pt-3 dark:border-zinc-800">
+              <Link href="/login" className="rounded-md px-2 py-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
                 Log in
               </Link>
               <Link
                 href="/login"
-                className="text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-4 py-2.5 rounded-lg text-center"
+                className="rounded-lg bg-linear-to-b from-white via-white/95 to-white/70 px-4 py-2.5 text-center text-sm font-semibold text-zinc-950 shadow-[0_10px_22px_rgba(0,0,0,0.08)] dark:from-zinc-100 dark:via-zinc-50 dark:to-zinc-200"
               >
                 Get Started
               </Link>

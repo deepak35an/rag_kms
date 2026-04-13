@@ -8,3 +8,6 @@ backend/public/chat_history/
 
 # Local Python virtual env at repo root
 .venv/
+
+changes
+/changes

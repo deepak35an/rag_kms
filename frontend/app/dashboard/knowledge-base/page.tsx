@@ -479,8 +479,8 @@ export default function KnowledgeBasePage() {
                 onClick={() => setSelectedId(kb.id)}
                 className={`relative cursor-pointer rounded-2xl border-2 p-6 transition-all ${
                   isSelected
-                    ? "border-blue-500 bg-white shadow-md"
-                    : "border-gray-200 bg-white hover:border-blue-200 hover:shadow-sm"
+                    ? "border-[#c3a968] bg-white shadow-md"
+                    : "border-gray-200 bg-white hover:border-[#d8c183] hover:shadow-sm"
                 }`}
               >
                 {/* Delete button */}
@@ -495,8 +495,8 @@ export default function KnowledgeBasePage() {
                 </button>
 
                 <div className="flex items-center gap-4 mb-4 pr-10">
-                  <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${isSelected ? "bg-blue-100" : "bg-gray-100"}`}>
-                    <svg className={`w-6 h-6 ${isSelected ? "text-blue-600" : "text-gray-500"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${isSelected ? "bg-[#f6f0df]" : "bg-gray-100"}`}>
+                    <svg className={`w-6 h-6 ${isSelected ? "text-[#a48745]" : "text-gray-500"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
                     </svg>
                   </div>
@@ -519,7 +519,7 @@ export default function KnowledgeBasePage() {
           {/* Upload Section */}
           <div className="bg-white rounded-xl p-8 border border-gray-200">
             <div className="flex items-start gap-4 mb-6">
-              <svg className="w-6 h-6 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6 text-[#a48745] mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
               </svg>
               <div>
@@ -540,8 +540,8 @@ export default function KnowledgeBasePage() {
               onClick={() => fileInputRef.current?.click()}
               className={`border-2 border-dashed rounded-xl p-16 text-center cursor-pointer transition-all ${
                 isDragging
-                  ? "border-blue-500 bg-blue-50"
-                  : "border-gray-300 hover:border-blue-400 hover:bg-gray-50"
+                  ? "border-[#c3a968] bg-[#f6f0df]"
+                  : "border-gray-300 hover:border-[#b79a52] hover:bg-gray-50"
               }`}
             >
               <svg className="w-12 h-12 mx-auto mb-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -672,7 +672,7 @@ export default function KnowledgeBasePage() {
                   value={newKBName}
                   onChange={(e) => setNewKBName(e.target.value)}
                   placeholder="e.g., Company Policies"
-                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-base text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-base text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#b79a52]/30 focus:border-transparent transition-all"
                   autoFocus
                 />
               </div>
@@ -686,7 +686,7 @@ export default function KnowledgeBasePage() {
                   onChange={(e) => setNewKBDesc(e.target.value)}
                   placeholder="Brief description of this knowledge base..."
                   rows={3}
-                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-base text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none transition-all"
+                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-base text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#b79a52]/30 focus:border-transparent resize-none transition-all"
                 />
               </div>
             </div>
@@ -705,7 +705,7 @@ export default function KnowledgeBasePage() {
               <button
                 onClick={handleCreateKB}
                 disabled={!newKBName.trim()}
-                className="flex-1 px-4 py-2.5 bg-blue-600 text-white text-base font-medium rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="flex-1 px-4 py-2.5 bg-[#b79a52] text-white text-base font-medium rounded-xl hover:bg-[#a48745] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Create
               </button>

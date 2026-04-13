@@ -33,7 +33,7 @@ const steps = [
 
 export default function HowItWorks() {
   return (
-    <section id="how-it-works" className="py-24 px-4 sm:px-6 lg:px-8 bg-gray-50">
+    <section id="how-it-works" className="py-24 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-zinc-950">
       <div className="max-w-7xl mx-auto">
         {/* Section Header */}
         <div className="text-center max-w-2xl mx-auto mb-16">
@@ -65,7 +65,7 @@ export default function HowItWorks() {
                 >
                   {/* Text Card */}
                   <div className="w-full lg:w-5/12">
-                    <div className="bg-white border border-gray-100 rounded-2xl p-8 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="bg-white border border-gray-100 rounded-2xl p-8 shadow-sm hover:shadow-md transition-shadow dark:bg-zinc-900 dark:border-zinc-800">
                       <span className="text-4xl font-black text-blue-100 select-none">
                         {step.number}
                       </span>
