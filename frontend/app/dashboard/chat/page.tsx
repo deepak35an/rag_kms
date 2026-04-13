@@ -484,7 +484,22 @@ export default function ChatPage() {
           (b.metadata?.relevance_score ?? 0) - (a.metadata?.relevance_score ?? 0)
       );
 
-      if (sortedChunks.length === 0) {
+      const normalizedChunks = sortedChunks.map((chunk) => {
+        const normalizedSource = markdownToPlainText(
+          String(chunk.metadata?.source ?? "Unknown source")
+        );
+
+        return {
+          ...chunk,
+          content: markdownToPlainText(chunk.content || ""),
+          metadata: {
+            ...chunk.metadata,
+            source: normalizedSource || "Unknown source",
+          },
+        };
+      });
+
+      if (normalizedChunks.length === 0) {
         const noChunksMsg: Message = {
           id: `msg-${Date.now()}-no-chunks`,
           role: "assistant",
@@ -519,17 +534,19 @@ export default function ChatPage() {
         return;
       }
 
-      setCandidateChunks(sortedChunks);
+      setCandidateChunks(normalizedChunks);
       setIsChunksPanelCollapsed(false);
 
-      const defaultSelection = sortedChunks
+      const defaultSelection = normalizedChunks
         .filter((chunk) => (chunk.metadata?.relevance_score ?? 0) >= 0.7)
         .map((chunk) => chunk.id);
 
       setSelectedChunkIds(
         defaultSelection.length > 0
           ? defaultSelection
-          : sortedChunks.slice(0, Math.min(3, sortedChunks.length)).map((chunk) => chunk.id)
+          : normalizedChunks
+              .slice(0, Math.min(3, normalizedChunks.length))
+              .map((chunk) => chunk.id)
       );
     } catch (error) {
       const message =
