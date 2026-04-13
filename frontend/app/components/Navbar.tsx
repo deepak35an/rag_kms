@@ -1,7 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
-import { Menu, Sparkles, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { useState } from "react";
 import ThemeToggle from "@/components/theme-toggle";
 
@@ -19,8 +20,14 @@ export default function Navbar() {
       <div className="mx-auto max-w-6xl rounded-2xl border border-zinc-300/80 bg-white/80 px-4 shadow-[0_14px_36px_rgba(0,0,0,0.08)] backdrop-blur-xl dark:border-zinc-700 dark:bg-zinc-900/80">
         <div className="flex h-16 items-center justify-between">
           <Link href="/" className="flex items-center gap-3">
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-linear-to-br from-[#d9bf84] via-[#b79a52] to-[#8f753d] text-zinc-950 shadow-sm">
-              <Sparkles className="h-4.5 w-4.5" />
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-zinc-200 bg-white p-1 shadow-sm dark:border-zinc-700 dark:bg-zinc-100">
+              <Image
+                src="/LOGO.png"
+                alt="RAG AI logo"
+                width={28}
+                height={28}
+                className="h-7 w-7 object-contain"
+              />
             </span>
 
             <span className="leading-tight">

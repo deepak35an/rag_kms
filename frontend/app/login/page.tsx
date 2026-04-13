@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -76,8 +77,14 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2">
-            <div className="w-9 h-9 bg-[#b79a52] rounded-xl flex items-center justify-center">
-              <span className="text-white font-bold">C</span>
+            <div className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-zinc-200 bg-white p-1 shadow-sm dark:border-zinc-700 dark:bg-zinc-100">
+              <Image
+                src="/LOGO.png"
+                alt="RAG AI logo"
+                width={28}
+                height={28}
+                className="h-7 w-7 object-contain"
+              />
             </div>
             <span className="text-2xl font-bold text-gray-900">
               Context<span className="text-[#a48745]">IQ</span>
