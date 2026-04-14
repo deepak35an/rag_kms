@@ -7,6 +7,8 @@ import { useEffect, useRef } from "react";
 import { useState } from "react";
 import ThemeToggle from "@/components/theme-toggle";
 
+const STORAGE_KEY = "lafleuriq_user";
+
 const navItems = [
   {
     label: "Knowledge Base",
@@ -51,7 +53,7 @@ export default function DashboardLayout({
     // Only check auth once on client side
     if (!authCheckRef.current) {
       authCheckRef.current = true;
-      const user = localStorage.getItem("contextiq_user");
+      const user = localStorage.getItem(STORAGE_KEY);
       if (!user) {
         router.replace("/login");
       }
@@ -59,7 +61,7 @@ export default function DashboardLayout({
   }, [router]);
 
   const handleLogout = () => {
-    localStorage.removeItem("contextiq_user");
+    localStorage.removeItem(STORAGE_KEY);
     router.replace("/login");
   };
 
@@ -84,14 +86,14 @@ export default function DashboardLayout({
           <div className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-zinc-200 bg-white p-1 shadow-sm dark:border-zinc-700 dark:bg-zinc-100">
             <Image
               src="/LOGO.png"
-              alt="RAG AI logo"
+              alt="lafleur IQ logo"
               width={28}
               height={28}
               className="h-7 w-7 object-contain"
             />
           </div>
           <div className="flex flex-col justify-center">
-            <div className="font-bold text-xl text-gray-900 tracking-tight leading-none">RAG Platform</div>
+            <div className="font-bold text-xl text-gray-900 tracking-tight leading-none">lafleur IQ</div>
             <div className="text-sm text-gray-500 mt-1 font-medium tracking-wide">AI Knowledge Assistant</div>
           </div>
         </div>
@@ -155,13 +157,13 @@ export default function DashboardLayout({
             <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 bg-white p-1 shadow-sm dark:border-zinc-700 dark:bg-zinc-100">
               <Image
                 src="/LOGO.png"
-                alt="RAG AI logo"
+                alt="lafleur IQ logo"
                 width={24}
                 height={24}
                 className="h-6 w-6 object-contain"
               />
             </span>
-            <div className="font-semibold text-lg text-gray-900">RAG Platform</div>
+            <div className="font-semibold text-lg text-gray-900">lafleur IQ</div>
           </div>
           </div>
           <ThemeToggle />

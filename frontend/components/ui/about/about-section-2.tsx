@@ -120,7 +120,7 @@ export default function AboutSection2() {
                 customVariants={textVariants}
                 className="mt-6 max-w-2xl text-base leading-relaxed text-gray-600 sm:text-lg"
               >
-                From brochures and policy docs to manuals and reports, RAG AI helps your team ask natural-language
+                From brochures and policy docs to manuals and reports, lafleur IQ helps your team ask natural-language
                 questions and get fast, citation-backed answers without manually searching page by page.
               </TimelineContent>
 

@@ -5,6 +5,17 @@ export function Features() {
     return (
         <section className="bg-gray-50 py-16 md:py-32 dark:bg-transparent">
             <div className="mx-auto max-w-3xl lg:max-w-5xl px-6">
+                <div className="mx-auto max-w-2xl text-center mb-16 text-balance">
+                    <p className="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-blue-600">
+                        Features
+                    </p>
+                    <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl dark:text-zinc-100">
+                        Core Capabilities of Our RAG
+                    </h2>
+                    <p className="mt-4 text-lg text-gray-600 dark:text-zinc-300">
+                        Everything you need to retrieve relevant information and generate accurate, cited answers securely on your own infrastructure.
+                    </p>
+                </div>
                 <div className="relative">
                     <div className="relative z-10 grid grid-cols-6 gap-3">
                         <Card className="relative col-span-full flex overflow-hidden lg:col-span-2">
@@ -18,7 +29,7 @@ export function Features() {
                                     </svg>
                                     <span className="mx-auto block w-fit text-5xl font-semibold">100%</span>
                                 </div>
-                                <h2 className="mt-6 text-center text-3xl font-semibold">Customizable</h2>
+                                <h2 className="mt-6 text-center text-3xl font-semibold">Local & Private</h2>
                             </CardContent>
                         </Card>
                         <Card className="relative col-span-full overflow-hidden sm:col-span-3 lg:col-span-2">
@@ -49,8 +60,8 @@ export function Features() {
                                     </svg>
                                 </div>
                                 <div className="relative z-10 mt-6 space-y-2 text-center">
-                                    <h2 className="group-hover:text-secondary-950 text-lg font-medium transition dark:text-white">Secure by default</h2>
-                                    <p className="text-foreground">Provident fugit and vero voluptate. magnam magni doloribus dolores voluptates a sapiente nisi.</p>
+                                    <h2 className="group-hover:text-secondary-950 text-lg font-medium transition dark:text-white">Source Citations</h2>
+                                    <p className="text-foreground">Every answer comes with traceable references — document names and page numbers you can verify.</p>
                                 </div>
                             </CardContent>
                         </Card>
@@ -96,8 +107,8 @@ export function Features() {
                                     </svg>
                                 </div>
                                 <div className="relative z-10 mt-14 space-y-2 text-center">
-                                    <h2 className="text-lg font-medium transition">Faster than light</h2>
-                                    <p className="text-foreground">Provident fugit vero voluptate. magnam magni doloribus dolores voluptates inventore nisi.</p>
+                                    <h2 className="text-lg font-medium transition">AI-Powered Answers</h2>
+                                    <p className="text-foreground">Uses a local LLM to generate natural language responses grounded strictly in your actual documents.</p>
                                 </div>
                             </CardContent>
                         </Card>
@@ -108,8 +119,8 @@ export function Features() {
                                         <Shield className="m-auto size-5" strokeWidth={1} />
                                     </div>
                                     <div className="space-y-2">
-                                        <h2 className="group-hover:text-secondary-950 text-lg font-medium text-zinc-800 transition dark:text-white">Faster than light</h2>
-                                        <p className="text-foreground">Provident fugit vero voluptate. Voluptates a sapiente inventore nisi.</p>
+                                        <h2 className="group-hover:text-secondary-950 text-lg font-medium text-zinc-800 transition dark:text-white">Hybrid Search</h2>
+                                        <p className="text-foreground">Combines vector similarity search with BM25 keyword matching for comprehensive and accurate document retrieval.</p>
                                     </div>
                                 </div>
                                 <div className="rounded-tl-(--radius) relative -mb-6 -mr-6 mt-6 h-fit border-l border-t p-6 py-6 sm:ml-6">
@@ -148,28 +159,28 @@ export function Features() {
                                         <Users className="m-auto size-6" strokeWidth={1} />
                                     </div>
                                     <div className="space-y-2">
-                                        <h2 className="text-lg font-medium transition">Keep your loved ones safe</h2>
-                                        <p className="text-foreground">Voluptate. magnam magni doloribus dolores voluptates a sapiente inventore nisi.</p>
+                                        <h2 className="text-lg font-medium transition">Smart Chunking & Memory</h2>
+                                        <p className="text-foreground">Intelligently splits documents with semantic strategies while maintaining conversation context across follow-ups.</p>
                                     </div>
                                 </div>
                                 <div className="before:bg-(--color-border) relative mt-6 before:absolute before:inset-0 before:mx-auto before:w-px sm:-my-6 sm:-mr-6">
                                     <div className="relative flex h-full flex-col justify-center space-y-6 py-6">
                                         <div className="relative flex w-[calc(50%+0.875rem)] items-center justify-end gap-2">
-                                            <span className="block h-fit rounded border px-2 py-1 text-xs shadow-sm">Likeur</span>
+                                            <span className="block h-fit rounded border px-2 py-1 text-xs shadow-sm">Vector</span>
                                             <div className="ring-background size-7 ring-4">
-                                                <img className="size-full rounded-full" src="https://avatars.githubusercontent.com/u/102558960?v=4" alt="" />
+                                                <div className="size-full rounded-full bg-blue-500/20 flex items-center justify-center"><svg className="size-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg></div>
                                             </div>
                                         </div>
                                         <div className="relative ml-[calc(50%-1rem)] flex items-center gap-2">
                                             <div className="ring-background size-8 ring-4">
-                                                <img className="size-full rounded-full" src="https://avatars.githubusercontent.com/u/47919550?v=4" alt="" />
+                                                <div className="size-full rounded-full bg-blue-500/20 flex items-center justify-center"><svg className="size-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg></div>
                                             </div>
-                                            <span className="block h-fit rounded border px-2 py-1 text-xs shadow-sm">M. Irung</span>
+                                            <span className="block h-fit rounded border px-2 py-1 text-xs shadow-sm">Memory</span>
                                         </div>
                                         <div className="relative flex w-[calc(50%+0.875rem)] items-center justify-end gap-2">
-                                            <span className="block h-fit rounded border px-2 py-1 text-xs shadow-sm">B. Ng</span>
+                                            <span className="block h-fit rounded border px-2 py-1 text-xs shadow-sm">BM25</span>
                                             <div className="ring-background size-7 ring-4">
-                                                <img className="size-full rounded-full" src="https://avatars.githubusercontent.com/u/31113941?v=4" alt="" />
+                                                <div className="size-full rounded-full bg-blue-500/20 flex items-center justify-center"><svg className="size-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg></div>
                                             </div>
                                         </div>
                                     </div>

@@ -12,8 +12,8 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "ContextIQ — Ask Questions, Get Cited Answers",
-  description: "ContextIQ uses AI-powered retrieval to search your documents and generate accurate, cited answers instantly.",
+  title: "lafleur IQ — Ask Questions, Get Cited Answers",
+  description: "lafleur IQ uses AI-powered retrieval to search your documents and generate accurate, cited answers instantly.",
   icons: {
     icon: "/LOGO.png",
     shortcut: "/LOGO.png",

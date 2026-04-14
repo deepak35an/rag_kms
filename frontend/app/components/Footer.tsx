@@ -12,14 +12,14 @@ export default function Footer() {
               <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 bg-white p-1 shadow-sm dark:border-zinc-700 dark:bg-zinc-100">
                 <Image
                   src="/LOGO.png"
-                  alt="RAG AI logo"
+                  alt="lafleur IQ logo"
                   width={24}
                   height={24}
                   className="h-6 w-6 object-contain"
                 />
               </div>
               <span className="text-xl font-bold text-gray-900 dark:text-white">
-                Context<span className="text-blue-400">IQ</span>
+                lafleur <span className="text-blue-400">IQ</span>
               </span>
             </div>
             <p className="text-sm leading-relaxed">
@@ -74,7 +74,7 @@ export default function Footer() {
         {/* Bottom bar */}
         <div className="border-t border-gray-200 dark:border-zinc-800 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-sm">
-            &copy; {new Date().getFullYear()} ContextIQ. All rights reserved.
+            &copy; {new Date().getFullYear()} lafleur IQ. All rights reserved.
           </p>
           <p className="text-sm">
             Built for intelligent document search & answers.

@@ -23,7 +23,7 @@ export default function Navbar() {
             <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-zinc-200 bg-white p-1 shadow-sm dark:border-zinc-700 dark:bg-zinc-100">
               <Image
                 src="/LOGO.png"
-                alt="RAG AI logo"
+                alt="lafleur IQ logo"
                 width={28}
                 height={28}
                 className="h-7 w-7 object-contain"
@@ -32,7 +32,7 @@ export default function Navbar() {
 
             <span className="leading-tight">
               <span className="block text-sm font-semibold tracking-[0.14em] text-zinc-900 dark:text-zinc-100">
-                RAG AI
+                lafleur IQ
               </span>
               <span className="block text-[10px] font-medium uppercase tracking-[0.16em] text-zinc-500 dark:text-zinc-400">
                 Smart PDF Intelligence

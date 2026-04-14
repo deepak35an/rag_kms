@@ -6,8 +6,10 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import ThemeToggle from "@/components/theme-toggle";
 
+const STORAGE_KEY = "lafleuriq_user";
+
 export default function LoginPage() {
-  const HARDCODED_EMAIL = "admin@ragplatform.local";
+  const HARDCODED_EMAIL = "admin@lafleuriq.local";
   const HARDCODED_PASSWORD = "Rag@12345";
 
   const router = useRouter();
@@ -19,7 +21,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const user = localStorage.getItem("contextiq_user");
+    const user = localStorage.getItem(STORAGE_KEY);
     if (user) router.replace("/dashboard/knowledge-base");
   }, [router]);
 
@@ -48,7 +50,7 @@ export default function LoginPage() {
     // Hardcoded auth — store in localStorage and redirect
     setTimeout(() => {
       localStorage.setItem(
-        "contextiq_user",
+        STORAGE_KEY,
         JSON.stringify({ name: name || email.split("@")[0], email })
       );
       setLoading(false);
@@ -80,14 +82,14 @@ export default function LoginPage() {
             <div className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-zinc-200 bg-white p-1 shadow-sm dark:border-zinc-700 dark:bg-zinc-100">
               <Image
                 src="/LOGO.png"
-                alt="RAG AI logo"
+                alt="lafleur IQ logo"
                 width={28}
                 height={28}
                 className="h-7 w-7 object-contain"
               />
             </div>
             <span className="text-2xl font-bold text-gray-900">
-              Context<span className="text-[#a48745]">IQ</span>
+              lafleur <span className="text-[#a48745]">IQ</span>
             </span>
           </Link>
           <p className="mt-3 text-gray-500 text-sm">

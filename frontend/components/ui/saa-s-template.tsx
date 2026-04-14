@@ -36,7 +36,7 @@ export default function SaaSTemplateHero() {
       <div className="mx-auto flex max-w-6xl flex-col items-center text-center">
         <aside className="mb-8 inline-flex flex-wrap items-center justify-center gap-2 rounded-full border border-zinc-300/80 bg-white/80 px-4 py-2 text-xs font-medium text-zinc-600 shadow-sm backdrop-blur dark:border-zinc-700 dark:bg-zinc-900/70 dark:text-zinc-300">
           <Sparkles className="h-3.5 w-3.5 text-[#b79a52]" />
-          SaaS template styling adapted for ContextIQ RAG
+          SaaS template styling adapted for lafleur IQ
         </aside>
 
         <h1 className="max-w-4xl px-4 text-4xl font-semibold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
@@ -50,7 +50,7 @@ export default function SaaSTemplateHero() {
         </h1>
 
         <p className="mt-6 max-w-3xl px-4 text-base leading-7 text-zinc-600 sm:text-lg dark:text-zinc-300">
-          ContextIQ combines retrieval, reranking, and generation to deliver fast,
+          lafleur IQ combines retrieval, reranking, and generation to deliver fast,
           cited answers from your documents — built to feel like a polished SaaS product
           from first interaction.
         </p>
