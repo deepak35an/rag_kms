@@ -365,7 +365,7 @@ async def ingest_documents(request: IngestRequest):
             return {"status": "error", "message": f"Upload folder not found for kb_id '{request.kb_id}'"}
 
         # Find all PDF files in the upload folder
-        pdf_files = list(upload_dir.glob("*.pdf")) + list(upload_dir.glob("*.PDF"))
+        pdf_files = list(set(upload_dir.glob("*.pdf")) | set(upload_dir.glob("*.PDF")))
         if not pdf_files:
             return {"status": "error", "message": "No PDF files found in the upload folder"}
 
