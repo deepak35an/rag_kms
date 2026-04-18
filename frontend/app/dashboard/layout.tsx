@@ -110,7 +110,7 @@ export default function DashboardLayout({
                 className={`flex items-center gap-3 px-3 py-3 rounded-xl text-base font-medium transition-colors ${
                   isActive
                     ? "bg-[#f6f0df] text-[#816a35] dark:bg-[#3b3018]/70 dark:text-[#e6cf97]"
-                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-zinc-400 dark:hover:bg-zinc-800/50 dark:hover:text-zinc-100"
                 }`}
               >
                 {item.icon}
@@ -129,7 +129,7 @@ export default function DashboardLayout({
           <div className="pb-4">
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-base font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
+            className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-base font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors dark:text-zinc-400 dark:hover:bg-zinc-800/50 dark:hover:text-zinc-100"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-7.5a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 006 21h7.5a2.25 2.25 0 002.25-2.25V15m-3 0l3-3m0 0l-3-3m3 3H9" />
@@ -147,7 +147,7 @@ export default function DashboardLayout({
           <div className="flex items-center gap-3">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="p-2 -ml-2 rounded-lg text-gray-600 hover:bg-gray-100"
+            className="p-2 -ml-2 rounded-lg text-gray-600 hover:bg-gray-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -163,7 +163,7 @@ export default function DashboardLayout({
                 className="h-6 w-6 object-contain"
               />
             </span>
-            <div className="font-semibold text-lg text-gray-900">lafleur IQ</div>
+            <div className="font-semibold text-lg text-gray-900 dark:text-zinc-100">lafleur IQ</div>
           </div>
           </div>
           <ThemeToggle />

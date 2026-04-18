@@ -272,7 +272,7 @@ export default function HistoryPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search conversations..."
-            className="w-full pl-12 pr-5 py-4 bg-gray-50 border border-gray-200 rounded-xl text-base text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#b79a52]/30 focus:border-[#b79a52] focus:bg-white transition-colors"
+            className="w-full pl-12 pr-5 py-4 bg-gray-50 border border-gray-200 rounded-xl text-base text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#b79a52]/30 focus:border-[#b79a52] focus:bg-white transition-colors dark:bg-zinc-900/50 dark:border-zinc-800 dark:text-zinc-200 dark:placeholder-zinc-500 dark:focus:bg-zinc-900"
           />
         </div>
       </div>
@@ -291,7 +291,7 @@ export default function HistoryPage() {
       )}
 
       {filteredConversations.length === 0 ? (
-        <div className="text-center py-20 text-gray-400 bg-white border border-gray-200 rounded-2xl">
+        <div className="text-center py-20 text-gray-400 bg-white border border-gray-200 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800">
           <svg
             className="w-14 h-14 mx-auto mb-4 opacity-40"
             fill="none"
@@ -320,10 +320,10 @@ export default function HistoryPage() {
               onClick={() => {
                 void openConversation(conv.id);
               }}
-              className="bg-white rounded-2xl border border-gray-200 p-6 hover:shadow-md hover:border-[#d8c183] cursor-pointer transition-all flex items-start justify-between group"
+              className="bg-white rounded-2xl border border-gray-200 p-6 hover:shadow-md hover:border-[#d8c183] cursor-pointer transition-all flex items-start justify-between group dark:bg-zinc-900 dark:border-zinc-800 dark:hover:border-[#816a35]"
             >
               <div className="flex items-start gap-5 flex-1 min-w-0 pr-5">
-                <div className="w-14 h-14 bg-[#f6f0df] rounded-xl flex items-center justify-center shrink-0 text-[#a48745] group-hover:bg-[#ebdfbf] transition-colors">
+                <div className="w-14 h-14 bg-[#f6f0df] rounded-xl flex items-center justify-center shrink-0 text-[#a48745] group-hover:bg-[#ebdfbf] transition-colors dark:bg-[#3b3018]/50 dark:text-[#cdb275] dark:group-hover:bg-[#524123]/60">
                   <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-8.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" />
                   </svg>
@@ -331,7 +331,7 @@ export default function HistoryPage() {
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-4 mb-2">
-                    <h3 className="font-semibold text-gray-900 text-xl group-hover:text-[#816a35] transition-colors">
+                    <h3 className="font-semibold text-gray-900 text-xl group-hover:text-[#816a35] transition-colors dark:text-zinc-100 dark:group-hover:text-[#e6cf97]">
                       {conv.title || "Conversation"}
                     </h3>
                     {conv.status === "active" && (
@@ -340,7 +340,7 @@ export default function HistoryPage() {
                       </span>
                     )}
                   </div>
-                  <p className="text-base text-gray-600 mb-4 line-clamp-1">
+                  <p className="text-base text-gray-600 mb-4 line-clamp-1 dark:text-zinc-400">
                     {conv.preview || "No preview available"}
                   </p>
                   <div className="flex items-center gap-5 text-sm text-gray-400">
@@ -353,7 +353,7 @@ export default function HistoryPage() {
                       {formatDate(conv.updatedAt)}
                     </span>
                     {conv.kbName && (
-                      <span className="px-3 py-1 rounded-md bg-gray-100 text-gray-600">
+                      <span className="px-3 py-1 rounded-md bg-gray-100 text-gray-600 dark:bg-zinc-800 dark:text-zinc-400">
                         {conv.kbName}
                       </span>
                     )}

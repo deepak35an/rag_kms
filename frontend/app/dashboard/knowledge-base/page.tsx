@@ -479,14 +479,14 @@ export default function KnowledgeBasePage() {
                 onClick={() => setSelectedId(kb.id)}
                 className={`relative cursor-pointer rounded-2xl border-2 p-6 transition-all ${
                   isSelected
-                    ? "border-[#c3a968] bg-white shadow-md"
-                    : "border-gray-200 bg-white hover:border-[#d8c183] hover:shadow-sm"
+                    ? "border-[#c3a968] bg-white shadow-md dark:bg-zinc-900 dark:border-[#a48745]"
+                    : "border-gray-200 bg-white hover:border-[#d8c183] hover:shadow-sm dark:bg-zinc-800 dark:border-zinc-700 dark:hover:border-[#816a35]"
                 }`}
               >
                 {/* Delete button */}
                 <button
                   onClick={(e) => handleDelete(kb.id, e)}
-                  className="absolute top-5 right-5 p-2 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors"
+                  className="absolute top-5 right-5 p-2 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-colors"
                   title="Delete knowledge base"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -540,8 +540,8 @@ export default function KnowledgeBasePage() {
               onClick={() => fileInputRef.current?.click()}
               className={`border-2 border-dashed rounded-xl p-16 text-center cursor-pointer transition-all ${
                 isDragging
-                  ? "border-[#c3a968] bg-[#f6f0df]"
-                  : "border-gray-300 hover:border-[#b79a52] hover:bg-gray-50"
+                  ? "border-[#c3a968] bg-[#f6f0df] dark:border-[#a48745] dark:bg-[#3b3018]/50"
+                  : "border-gray-300 hover:border-[#b79a52] hover:bg-gray-50 dark:border-zinc-700 dark:hover:bg-zinc-800/50"
               }`}
             >
               <svg className="w-12 h-12 mx-auto mb-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -590,7 +590,10 @@ export default function KnowledgeBasePage() {
                   {/* Table Body */}
                   <div className="min-w-190 divide-y divide-gray-100">
                     {selectedDocs.map((doc) => (
-                      <div key={doc.id} className="px-8 py-5 hover:bg-gray-50 transition-colors">
+                <div
+                  key={doc.id}
+                  className="px-8 py-5 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
+                >
                         <div className="grid grid-cols-12 gap-4 items-center text-base">
                           <div className="col-span-5 flex items-center gap-3">
                             <svg className="w-5 h-5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -698,7 +701,7 @@ export default function KnowledgeBasePage() {
                   setNewKBName("");
                   setNewKBDesc("");
                 }}
-                className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 text-base font-medium rounded-xl hover:bg-gray-50 transition-colors"
+                className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 text-base font-medium rounded-xl hover:bg-gray-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 transition-colors"
               >
                 Cancel
               </button>
@@ -717,10 +720,10 @@ export default function KnowledgeBasePage() {
       {toast && (
         <div className="fixed right-6 bottom-6 z-50">
           <div
-            className={`px-5 py-4 rounded-xl border text-base shadow-lg ${
+            className={`px-5 py-4 rounded-xl border text-base shadow-lg transition-colors ${
               toast.type === "success"
-                ? "bg-white border-green-200 text-gray-800"
-                : "bg-white border-red-200 text-gray-800"
+                ? "bg-white border-green-200 text-gray-800 dark:bg-zinc-900 dark:border-green-900/50 dark:text-green-50"
+                : "bg-white border-red-200 text-gray-800 dark:bg-zinc-900 dark:border-red-900/50 dark:text-red-50"
             }`}
           >
             <div className="flex items-center gap-3">

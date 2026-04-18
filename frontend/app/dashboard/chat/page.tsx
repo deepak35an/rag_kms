@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   createSession,
   generateAnswer,
@@ -175,7 +174,6 @@ function mapKbFromServer(kb: {
 }
 
 export default function ChatPage() {
-  const router = useRouter();
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string>("");
@@ -192,6 +190,7 @@ export default function ChatPage() {
   const [pendingSessionId, setPendingSessionId] = useState("");
   const [isRetrieving, setIsRetrieving] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [viewingChunkIndex, setViewingChunkIndex] = useState<number | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const streamIntervalRef = useRef<number | null>(null);
@@ -336,27 +335,6 @@ export default function ChatPage() {
   const persistMessages = (conversationId: string, nextMessages: Message[]) => {
     setMessages(nextMessages);
     writeJSON(`${MSG_PREFIX}${conversationId}`, nextMessages);
-  };
-
-  const switchConversation = (conversationId: string) => {
-    const target = conversations.find((c) => c.id === conversationId);
-    if (!target) return;
-
-    setCurrentConversationId(conversationId);
-    setSelectedKB(target.kbId || knowledgeBases[0]?.id || "");
-    localStorage.setItem(ACTIVE_CONVERSATION_KEY, conversationId);
-
-    const nextMessages = readJSON<Message[]>(`${MSG_PREFIX}${conversationId}`, [
-      welcomeMessage(),
-    ]);
-    setMessages(nextMessages);
-    setCandidateChunks([]);
-    setSelectedChunkIds([]);
-    setIsChunksPanelCollapsed(false);
-    setPendingQuestion("");
-    setPendingSessionId("");
-    setIsRetrieving(false);
-    setIsGenerating(false);
   };
 
   const createNewConversation = () => {
@@ -689,42 +667,33 @@ export default function ChatPage() {
             Chat with your AI assistant powered by your knowledge base
           </p>
         </div>
-        <button
-          onClick={createNewConversation}
-          className="flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white text-base font-medium px-5 py-3 rounded-xl transition-colors"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          New Chat
-        </button>
-      </div>
-
-      <div className="mb-5 flex flex-wrap gap-3">
-        {conversations.slice(0, 6).map((conv) => (
+        <div className="flex items-center gap-3">
+          {candidateChunks.length > 0 && (
+            <button
+              onClick={() => setViewingChunkIndex(0)}
+              className="flex items-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-base font-medium px-5 py-3 rounded-xl transition-colors dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-800 shadow-sm"
+            >
+              <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+              </svg>
+              View Retrieved Chunks ({candidateChunks.length})
+            </button>
+          )}
           <button
-            key={conv.id}
-            onClick={() => switchConversation(conv.id)}
-            className={`text-sm px-4 py-2 rounded-xl border transition-colors ${
-              conv.id === currentConversationId
-                ? "border-[#d8c183] bg-[#f6f0df] text-[#816a35] dark:border-[#524123] dark:bg-[#3b3018]/70 dark:text-[#e6cf97]"
-                : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
-            }`}
+            onClick={createNewConversation}
+            className="flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white text-base font-medium px-5 py-3 rounded-xl transition-colors"
           >
-            {conv.title || "Conversation"}
+            <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            New Chat
           </button>
-        ))}
-        <button
-          onClick={() => router.push("/dashboard/history")}
-          className="text-sm px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-colors"
-        >
-          View all history
-        </button>
+        </div>
       </div>
 
-      <div className="flex-1 flex flex-col bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden min-h-0">
-        <div className="px-8 py-4 border-b border-gray-200 bg-gray-50">
-          <h2 className="text-base font-semibold text-gray-900">Conversation</h2>
+      <div className="flex-1 flex flex-col bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden min-h-0 dark:bg-zinc-950 dark:border-zinc-800">
+        <div className="px-8 py-4 border-b border-gray-200 bg-gray-50 dark:border-zinc-800 dark:bg-zinc-900">
+          <h2 className="text-base font-semibold text-gray-900 dark:text-zinc-100">Conversation</h2>
         </div>
 
         <div className="flex-1 overflow-y-auto p-8 space-y-6">
@@ -753,7 +722,7 @@ export default function ChatPage() {
                 <div
                   className={`inline-block rounded-2xl px-5 py-4 text-base whitespace-pre-wrap ${
                     msg.role === "assistant"
-                      ? "bg-gray-100 text-gray-900"
+                      ? "bg-gray-100 text-gray-900 dark:bg-zinc-800 dark:text-zinc-100"
                       : "bg-[#b79a52] text-white"
                   }`}
                 >
@@ -771,7 +740,7 @@ export default function ChatPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
                 </svg>
               </div>
-              <div className="bg-gray-100 rounded-2xl px-5 py-4 text-base text-gray-500">
+              <div className="bg-gray-100 rounded-2xl px-5 py-4 text-base text-gray-500 dark:bg-zinc-800 dark:text-zinc-400">
                 {isGenerating
                   ? "Generating answer from selected chunks..."
                   : isRetrieving
@@ -784,7 +753,7 @@ export default function ChatPage() {
           <div ref={messagesEndRef} />
         </div>
 
-        <div className="p-6 border-t border-gray-100 bg-white">
+        <div className="p-6 border-t border-gray-100 bg-white dark:border-zinc-800 dark:bg-zinc-950">
           {candidateChunks.length > 0 && (
             <div className="mb-4 rounded-xl border border-[#dbc892] bg-white px-4 py-4 text-sm text-[#816a35] dark:border-[#524123] dark:bg-zinc-900 dark:text-[#e6cf97]">
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -825,7 +794,7 @@ export default function ChatPage() {
                       <button
                         type="button"
                         onClick={clearChunkSelection}
-                        className="px-2.5 py-1 rounded-md border border-gray-200 text-gray-600 bg-white hover:bg-gray-50"
+                        className="px-2.5 py-1 rounded-md border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
                       >
                         Clear
                       </button>
@@ -842,8 +811,9 @@ export default function ChatPage() {
                     {candidateChunks.map((chunk) => {
                       const selected = selectedChunkIds.includes(chunk.id);
                       return (
-                        <label
+                        <div
                           key={chunk.id}
+                          onClick={() => setViewingChunkIndex(candidateChunks.findIndex(c => c.id === chunk.id))}
                           className={`block rounded-lg border p-3 cursor-pointer transition-colors ${
                             selected
                               ? "border-[#c3a968] bg-[#f6f0df] dark:border-[#816a35] dark:bg-[#3b3018]/50"
@@ -855,6 +825,7 @@ export default function ChatPage() {
                               type="checkbox"
                               checked={selected}
                               onChange={() => toggleChunkSelection(chunk.id)}
+                              onClick={(e) => e.stopPropagation()}
                               className="mt-0.5"
                             />
 
@@ -871,12 +842,12 @@ export default function ChatPage() {
                                 </span>
                               </div>
 
-                              <p className="mt-2 text-xs text-gray-800 line-clamp-3 leading-relaxed">
+                              <p className="mt-2 text-xs text-gray-800 dark:text-zinc-300 line-clamp-3 leading-relaxed">
                                 {chunk.content}
                               </p>
                             </div>
                           </div>
-                        </label>
+                        </div>
                       );
                     })}
                   </div>
@@ -932,7 +903,7 @@ export default function ChatPage() {
             </p>
           )}
 
-          <div className="flex items-center gap-3 rounded-2xl border border-gray-300 bg-white p-3 shadow-sm transition-all focus-within:border-[#b79a52] focus-within:ring-2 focus-within:ring-[#b79a52]/30">
+          <div className="flex items-center gap-3 rounded-2xl border border-gray-300 bg-white dark:bg-zinc-900 dark:border-zinc-700 p-3 shadow-sm transition-all focus-within:border-[#b79a52] focus-within:ring-2 focus-within:ring-[#b79a52]/30">
             <input
               type="text"
               value={inputValue}
@@ -961,6 +932,56 @@ export default function ChatPage() {
           </div>
         </div>
       </div>
+
+      {viewingChunkIndex !== null && candidateChunks[viewingChunkIndex] && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <button
+            onClick={() => setViewingChunkIndex(Math.max(0, viewingChunkIndex - 1))}
+            disabled={viewingChunkIndex === 0}
+            className="fixed left-4 md:left-8 top-1/2 -translate-y-1/2 z-50 flex items-center justify-center w-12 h-12 bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+            title="Previous"
+          >
+            <svg className="w-6 h-6 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+
+          <div className="flex flex-col w-full max-w-3xl max-h-[85vh] bg-white dark:bg-zinc-900 rounded-2xl shadow-xl border border-gray-200 dark:border-zinc-800 overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800/50">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-zinc-100 flex items-center gap-2">
+                Chunk {viewingChunkIndex + 1} of {candidateChunks.length}
+                <span className="text-sm font-normal text-gray-500 dark:text-zinc-400">
+                  (Score: {(candidateChunks[viewingChunkIndex].metadata?.relevance_score ?? 0).toFixed(3)})
+                </span>
+              </h3>
+              <button
+                onClick={() => setViewingChunkIndex(null)}
+                className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-zinc-300 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
+                title="Close"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6 text-gray-800 dark:text-zinc-200 leading-relaxed whitespace-pre-wrap text-base">
+              {candidateChunks[viewingChunkIndex].content}
+            </div>
+          </div>
+
+          <button
+            onClick={() => setViewingChunkIndex(Math.min(candidateChunks.length - 1, viewingChunkIndex + 1))}
+            disabled={viewingChunkIndex === candidateChunks.length - 1}
+            className="fixed right-4 md:right-8 top-1/2 -translate-y-1/2 z-50 flex items-center justify-center w-12 h-12 bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+            title="Next"
+          >
+            <svg className="w-6 h-6 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+      )}
     </div>
   );
 }

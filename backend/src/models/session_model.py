@@ -22,7 +22,8 @@ class SessionManager:
     def get_session_history(self, session_id: str) -> ChatMessageHistory:
         """Get chat history for a session."""
         if session_id not in self.chat_histories:
-            raise HTTPException(status_code=404, detail="Session ID not found.")
+            logger.info(f"Implicitly created new session: {session_id}")
+            self.chat_histories[session_id] = ChatMessageHistory()
         return self.chat_histories[session_id]
 
     def update_session_history(self, session_id: str, user_input: str, ai_response: str):
