@@ -5,7 +5,7 @@ import { Database, Search, Sparkles } from "lucide-react";
 import type React from "react";
 
 // The main props for the HowItWorks component
-interface HowItWorksProps extends React.HTMLAttributes<HTMLElement> {}
+type HowItWorksProps = React.HTMLAttributes<HTMLElement>
 
 // The props for a single step card
 interface StepCardProps {
@@ -42,7 +42,7 @@ const StepCard: React.FC<StepCardProps> = ({
     <ul className="space-y-3">
       {benefits.map((benefit, index) => (
         <li key={index} className="flex items-center gap-3">
-          <div className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-primary/20">
+          <div className="flex h-4 w-4  items-center justify-center rounded-full bg-primary/20">
             <div className="h-2 w-2 rounded-full bg-primary"></div>
           </div>
           <span className="text-muted-foreground">{benefit}</span>
