@@ -46,6 +46,7 @@ class RAGConnector:
             try:
                 llm = ChatOllama(
                     model="gemma3:4b",
+                    base_url=os.getenv("OLLAMA_HOST", "http://localhost:11434"),
                     temperature=0.1,
                     num_predict=1024,
                 )

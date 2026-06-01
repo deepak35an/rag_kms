@@ -1,0 +1,56 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: rag-ollama
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+
+  ollama-pull:
+    image: ollama/ollama:latest
+    container_name: rag-ollama-pull
+    depends_on:
+      ollama:
+        condition: service_started
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ["/bin/sh", "-c", "sleep 10 && ollama pull gemma3:4b"]
+    restart: "no"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: rag-backend
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      HF_TOKEN: ${HF_TOKEN:-}
+      OMP_NUM_THREADS: "1"
+    volumes:
+      - qdrant_data:/app/qdrant_storage
+      - upload_data:/app/public
+    ports:
+      - "8000:8000"
+    depends_on:
+      ollama:
+        condition: service_started
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    container_name: rag-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  ollama_data:
+  qdrant_data:
+  upload_data:
