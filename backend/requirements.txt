@@ -1,10 +1,6 @@
-# RAG4GOV — pinned direct dependencies for Python 3.11 (Docker / VPS).
-# Pip resolves transitive deps automatically. All listed packages use ==.
-#
-# Install:
-#   pip install -r requirements.txt
-#
-# PyTorch CPU wheels:
+# RAG4GOV Consolidated Dependencies
+# Tested on Python 3.11.9 — do NOT use Python 3.12 (langsmith pydantic.v1 ForwardRef bug)
+# CPU-only PyTorch — keeps Docker image ~2GB instead of ~6GB
 --extra-index-url https://download.pytorch.org/whl/cpu
 
 # --- API & Server ---
@@ -14,33 +10,33 @@ pydantic==2.9.2
 python-dotenv==1.0.1
 python-multipart==0.0.9
 
-# --- LangChain (pydantic must be >=2.7.4 for langchain 0.3.x) ---
+# --- Core RAG & LLM ---
 langchain==0.3.21
 langchain-core==0.3.53
 langchain-community==0.3.20
 langchain-text-splitters==0.3.7
 langchain-openai==0.3.14
 langchain-ollama==0.3.2
+langsmith>=0.1.147
 
-# --- RAG / embeddings ---
+# --- Embeddings & Retrieval ---
 sentence-transformers==2.5.1
 rank-bm25==0.2.2
 qdrant-client==1.16.2
 
-# --- PDF / OCR ---
+# --- Data Processing & Extraction ---
 pdfplumber==0.10.4
 pdf2image==1.17.0
 pytesseract==0.3.13
 pymupdf4llm==0.2.9
 pymupdf==1.26.6
-pymupdf-layout==1.26.6
 opencv-python-headless==4.10.0.84
 rapidocr-onnxruntime==1.2.3
 tabulate==0.9.0
 Pillow==11.1.0
 
-# --- ML / computation ---
-torch==2.2.1
+# --- ML / Computation (CPU-only torch) ---
+torch==2.2.1+cpu
 numpy==1.26.4
 scikit-learn==1.5.2
 scipy==1.12.0

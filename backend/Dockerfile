@@ -15,7 +15,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt \
     && python -m uvicorn --version \
-    && python -c "import fastapi, uvicorn, langchain_community; print('deps OK')"
+    && python -c "import fastapi, uvicorn, langchain_community, sentence_transformers, torch, qdrant_client; print('deps OK')"
 
 COPY . .
 
