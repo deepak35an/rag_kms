@@ -9,12 +9,19 @@ into text suitable for the RAG system. It includes functionality for:
 - File handling utilities
 """
 import warnings
+import logging
 import pdfplumber
-import pymupdf.layout  # noqa: F401 — must load before pymupdf4llm for layout-aware PDF extraction
+try:
+    import pymupdf.layout  # noqa: F401 — must load before pymupdf4llm for layout-aware extraction
+except ImportError:
+    warnings.warn(
+        "pymupdf.layout not available; PDF extraction runs without layout analysis. "
+        "Install with: pip install 'pymupdf4llm[layout]==0.2.9'",
+        stacklevel=2,
+    )
 import pymupdf4llm
 from pdf2image import convert_from_path
 from rapidocr_onnxruntime import RapidOCR
-import logging
 import os
 import shutil
 import zipfile
