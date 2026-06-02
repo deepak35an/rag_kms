@@ -10,6 +10,7 @@ into text suitable for the RAG system. It includes functionality for:
 """
 import warnings
 import pdfplumber
+import pymupdf.layout  # noqa: F401 — must load before pymupdf4llm for layout-aware PDF extraction
 import pymupdf4llm
 from pdf2image import convert_from_path
 from rapidocr_onnxruntime import RapidOCR
