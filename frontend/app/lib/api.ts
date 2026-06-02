@@ -1,4 +1,11 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+/** Strip trailing slashes so API_BASE + path never becomes a double-slash URL. */
+const API_BASE = (
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+).replace(/\/+$/, "");
+
+function apiUrl(path: string): string {
+  return `${API_BASE}${path.startsWith("/") ? path : `/${path}`}`;
+}
 
 // --- Types ---
 
@@ -161,13 +168,13 @@ export interface OperationResponse {
 // --- API Functions ---
 
 export async function checkHealth(): Promise<HealthResponse> {
-  const res = await fetch(`${API_BASE}/health`);
+  const res = await fetch(apiUrl("/health"));
   if (!res.ok) throw new Error("Backend unreachable");
   return res.json();
 }
 
 export async function createSession(): Promise<SessionResponse> {
-  const res = await fetch(`${API_BASE}/create_session`, {
+  const res = await fetch(apiUrl("/create_session"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
   });
@@ -189,7 +196,7 @@ export async function askQuestion(
     ...(kbId ? { kb_id: kbId } : {}),
   };
 
-  const res = await fetch(`${API_BASE}/ask`, {
+  const res = await fetch(apiUrl("/ask"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -199,7 +206,7 @@ export async function askQuestion(
 }
 
 export async function listKBs(): Promise<ListKBsResponse> {
-  const res = await fetch(`${API_BASE}/list_kbs`);
+  const res = await fetch(apiUrl("/list_kbs"));
   if (!res.ok) throw new Error("Failed to list knowledge bases");
   return res.json();
 }
@@ -209,7 +216,7 @@ export async function createKB(
   name: string,
   description = ""
 ): Promise<CreateKBResponse> {
-  const res = await fetch(`${API_BASE}/create_kb`, {
+  const res = await fetch(apiUrl("/create_kb"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ id, name, description }),
@@ -220,7 +227,7 @@ export async function createKB(
 
 export async function deleteKB(kbId: string): Promise<OperationResponse> {
   const safeKbId = encodeURIComponent(kbId);
-  const res = await fetch(`${API_BASE}/delete_kb/${safeKbId}`, {
+  const res = await fetch(apiUrl(`/delete_kb/${safeKbId}`), {
     method: "DELETE",
   });
   if (!res.ok) throw new Error("Failed to delete knowledge base");
@@ -229,7 +236,7 @@ export async function deleteKB(kbId: string): Promise<OperationResponse> {
 
 export async function listDocs(kbId: string): Promise<ListDocsResponse> {
   const safeKbId = encodeURIComponent(kbId);
-  const res = await fetch(`${API_BASE}/list_docs/${safeKbId}`);
+  const res = await fetch(apiUrl(`/list_docs/${safeKbId}`));
   if (!res.ok) throw new Error("Failed to list documents");
   return res.json();
 }
@@ -240,7 +247,7 @@ export async function deleteDoc(
 ): Promise<OperationResponse> {
   const safeKbId = encodeURIComponent(kbId);
   const safeFilename = encodeURIComponent(filename);
-  const res = await fetch(`${API_BASE}/delete_doc/${safeKbId}/${safeFilename}`, {
+  const res = await fetch(apiUrl(`/delete_doc/${safeKbId}/${safeFilename}`), {
     method: "DELETE",
   });
   if (!res.ok) throw new Error("Failed to delete document");
@@ -248,7 +255,7 @@ export async function deleteDoc(
 }
 
 export async function listChats(): Promise<ListChatsResponse> {
-  const res = await fetch(`${API_BASE}/list_chats`);
+  const res = await fetch(apiUrl("/list_chats"));
   if (!res.ok) throw new Error("Failed to list chats");
   return res.json();
 }
@@ -257,7 +264,7 @@ export async function getChat(
   conversationId: string
 ): Promise<GetChatResponse> {
   const safeConversationId = encodeURIComponent(conversationId);
-  const res = await fetch(`${API_BASE}/get_chat/${safeConversationId}`);
+  const res = await fetch(apiUrl(`/get_chat/${safeConversationId}`));
   if (!res.ok) throw new Error("Failed to fetch chat");
   return res.json();
 }
@@ -266,7 +273,7 @@ export async function deleteChat(
   conversationId: string
 ): Promise<OperationResponse> {
   const safeConversationId = encodeURIComponent(conversationId);
-  const res = await fetch(`${API_BASE}/delete_chat/${safeConversationId}`, {
+  const res = await fetch(apiUrl(`/delete_chat/${safeConversationId}`), {
     method: "DELETE",
   });
   if (!res.ok) throw new Error("Failed to delete chat");
@@ -284,7 +291,7 @@ export async function retrieveChunks(
     kb_id: kbId,
   };
 
-  const res = await fetch(`${API_BASE}/retrieve`, {
+  const res = await fetch(apiUrl("/retrieve"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -305,7 +312,7 @@ export async function generateAnswer(
     selected_chunks: selectedChunks,
   };
 
-  const res = await fetch(`${API_BASE}/generate`, {
+  const res = await fetch(apiUrl("/generate"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -323,7 +330,7 @@ export async function uploadDocuments(
   formData.append("kb_id", kbId);
   files.forEach((file) => formData.append("files", file));
 
-  const res = await fetch(`${API_BASE}/upload_documents`, {
+  const res = await fetch(apiUrl("/upload_documents"), {
     method: "POST",
     body: formData,
   });
@@ -335,7 +342,7 @@ export async function uploadDocuments(
 export async function ingestDocuments(
   kbId: string
 ): Promise<IngestResponse> {
-  const res = await fetch(`${API_BASE}/ingest`, {
+  const res = await fetch(apiUrl("/ingest"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ kb_id: kbId }),
@@ -350,7 +357,7 @@ export async function saveChatHistory(
   conversationMeta: Record<string, unknown>,
   messages: Record<string, unknown>[]
 ): Promise<{ status: string; file_path?: string; message?: string }> {
-  const res = await fetch(`${API_BASE}/save_chat`, {
+  const res = await fetch(apiUrl("/save_chat"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -359,7 +366,7 @@ export async function saveChatHistory(
       messages: messages,
     }),
   });
-  
+
   if (!res.ok) throw new Error("Failed to save chat history to backend");
   return res.json();
 }
