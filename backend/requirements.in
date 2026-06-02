@@ -1,0 +1,43 @@
+# Top-level dependencies (edit this file, then regenerate pins on Linux):
+#   bash scripts/lock-requirements.sh
+#
+# requirements.txt is the pinned lock used by Docker/VPS (all == versions).
+
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+fastapi
+uvicorn==0.27.0
+pydantic==2.6.0
+python-dotenv==1.0.1
+python-multipart==0.0.6
+
+langchain==0.3.21
+langchain-core
+langchain-community
+langchain-text-splitters
+langchain-openai
+langchain-ollama
+
+sentence-transformers==2.5.1
+rank-bm25==0.2.2
+qdrant-client==1.16.2
+
+pdfplumber==0.10.4
+pdf2image==1.17.0
+pytesseract==0.3.13
+pymupdf4llm==0.2.9
+pymupdf==1.26.6
+pymupdf-layout==1.26.6
+opencv-python-headless==4.10.0.84
+rapidocr-onnxruntime==1.2.3
+tabulate==0.9.0
+Pillow==11.1.0
+
+torch==2.2.1
+numpy==1.26.4
+scikit-learn==1.5.2
+scipy==1.12.0
+
+psutil==7.0.0
+tqdm==4.66.4
+requests==2.31.0

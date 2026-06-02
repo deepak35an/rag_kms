@@ -10,13 +10,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-# Python deps (CPU-only PyTorch to keep image smaller)
+# Python deps — exact versions from requirements.txt (includes torch CPU index)
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir torch==2.2.1 --index-url https://download.pytorch.org/whl/cpu \
-    && pip install --no-cache-dir -r requirements.txt fastapi \
+    && pip install --no-cache-dir -r requirements.txt \
     && pip uninstall -y opencv-python 2>/dev/null || true \
-    && pip install --no-cache-dir --force-reinstall "opencv-python-headless>=4.8.0"
+    && pip install --no-cache-dir --force-reinstall opencv-python-headless==4.10.0.84
 
 COPY . .
 
