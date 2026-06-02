@@ -13,9 +13,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Python deps — exact versions from requirements.txt (includes torch CPU index)
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir \
+        uvicorn==0.27.0 \
+        fastapi==0.115.6 \
+        pydantic==2.6.0 \
+        python-dotenv==1.0.1 \
+        python-multipart==0.0.6 \
     && pip install --no-cache-dir -r requirements.txt \
-    && pip uninstall -y opencv-python 2>/dev/null || true \
-    && pip install --no-cache-dir --force-reinstall opencv-python-headless==4.10.0.84
+    && python -m uvicorn --version \
+    && python -c "import fastapi, uvicorn; print('server deps OK')"
 
 COPY . .
 
@@ -30,4 +36,4 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')" || exit 1
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
