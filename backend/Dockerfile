@@ -13,15 +13,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Python deps — exact versions from requirements.txt (includes torch CPU index)
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir \
-        uvicorn==0.27.0 \
-        fastapi==0.115.6 \
-        pydantic==2.6.0 \
-        python-dotenv==1.0.1 \
-        python-multipart==0.0.6 \
     && pip install --no-cache-dir -r requirements.txt \
     && python -m uvicorn --version \
-    && python -c "import fastapi, uvicorn; print('server deps OK')"
+    && python -c "import fastapi, uvicorn, langchain_community; print('deps OK')"
 
 COPY . .
 
